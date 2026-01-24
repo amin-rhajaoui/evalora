@@ -11,6 +11,7 @@ from ..models.evaluation import (
 )
 from ..services.evaluation_service import EvaluationService
 from ..config import AVATARS
+from . import session as session_router
 
 router = APIRouter()
 evaluation_service = EvaluationService()
@@ -77,16 +78,23 @@ async def get_feedback(session_id: str, avatar_id: str = None):
     debat_score = sum(s.score for s in evaluation.debat_scores.values())
     general_score = sum(s.score for s in evaluation.general_scores.values())
 
-    # Formater les durées
-    monologue_duration = format_duration(evaluation.id)  # Placeholder
-    debat_duration = format_duration(evaluation.id)
-    total_duration = format_duration(evaluation.id)
+    # Formater les durées (mm:ss)
+    monologue_sec = evaluation.monologue_duration or 0
+    debat_sec = evaluation.debat_duration or 0
+    monologue_duration = format_duration(monologue_sec)
+    debat_duration = format_duration(debat_sec)
+    total_duration = format_duration(monologue_sec + debat_sec)
 
     grade_letter = get_grade_letter(evaluation.total_score)
 
+    # Récupérer student_name depuis la session
+    sessions = getattr(session_router, "sessions", {})
+    session_obj = sessions.get(session_id)
+    student_name = session_obj.student_name if session_obj else "Étudiant"
+
     return FeedbackResponse(
         session_id=session_id,
-        student_name="Étudiant",  # À récupérer de la session
+        student_name=student_name,
         avatar_name=avatar_name,
         total_score=evaluation.total_score,
         grade_letter=grade_letter,
@@ -142,7 +150,9 @@ def get_grade_letter(score: float) -> str:
         return "E"
 
 
-def format_duration(seconds_or_id) -> str:
+def format_duration(seconds: int) -> str:
     """Formate une durée en mm:ss"""
-    # Placeholder - à implémenter avec les vraies durées
-    return "07:30"
+    if seconds < 0:
+        seconds = 0
+    m, s = divmod(seconds, 60)
+    return f"{int(m):02d}:{int(s):02d}"

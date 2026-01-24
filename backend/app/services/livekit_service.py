@@ -34,6 +34,11 @@ class LiveKitService:
         self.api_key = settings.LIVEKIT_API_KEY
         self.api_secret = settings.LIVEKIT_API_SECRET
         self.ws_url = settings.LIVEKIT_URL
+        # LiveKitAPI (REST) attend https, pas wss
+        self._api_url = (
+            self.ws_url.replace("wss://", "https://", 1).replace("ws://", "http://", 1)
+            if self.ws_url else None
+        )
 
         if self.is_configured:
             logger.info(f"LiveKitService initialise - URL: {self.ws_url}")
@@ -68,25 +73,25 @@ class LiveKitService:
         logger.info(f"Creation room LiveKit: {room_name}")
 
         try:
-            room_service = api.RoomServiceClient(
-                self.ws_url,
-                self.api_key,
-                self.api_secret
-            )
-
-            room = await room_service.create_room(
-                api.CreateRoomRequest(
-                    name=room_name,
-                    empty_timeout=300,
-                    max_participants=2
+            async with api.LiveKitAPI(
+                url=self._api_url,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+            ) as lkapi:
+                room = await lkapi.room.create_room(
+                    api.CreateRoomRequest(
+                        name=room_name,
+                        empty_timeout=300,
+                        max_participants=2,
+                    )
                 )
-            )
 
-            logger.info(f"Room LiveKit creee: {room_name} (SID: {room.sid})")
+            room_sid = getattr(room, "sid", None)
+            logger.info(f"Room LiveKit creee: {room_name} (SID: {room_sid})")
 
             return {
                 "room_name": room_name,
-                "room_sid": room.sid,
+                "room_sid": room_sid,
                 "status": "created",
                 "message": ""
             }
@@ -146,15 +151,12 @@ class LiveKitService:
         logger.info(f"Suppression room LiveKit: {room_name}")
 
         try:
-            room_service = api.RoomServiceClient(
-                self.ws_url,
-                self.api_key,
-                self.api_secret
-            )
-
-            await room_service.delete_room(
-                api.DeleteRoomRequest(room=room_name)
-            )
+            async with api.LiveKitAPI(
+                url=self._api_url,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+            ) as lkapi:
+                await lkapi.room.delete_room(api.DeleteRoomRequest(room=room_name))
 
             logger.info(f"Room supprimee: {room_name}")
             return {"status": "deleted", "room_name": room_name}
@@ -175,24 +177,24 @@ class LiveKitService:
         logger.debug(f"Recuperation participants pour {room_name}")
 
         try:
-            room_service = api.RoomServiceClient(
-                self.ws_url,
-                self.api_key,
-                self.api_secret
-            )
+            async with api.LiveKitAPI(
+                url=self._api_url,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+            ) as lkapi:
+                resp = await lkapi.room.list_participants(
+                    api.ListParticipantsRequest(room=room_name)
+                )
 
-            participants = await room_service.list_participants(
-                api.ListParticipantsRequest(room=room_name)
-            )
-
+            participants_list = getattr(resp, "participants", []) or []
             result = [
                 {
-                    "identity": p.identity,
-                    "name": p.name,
-                    "state": p.state,
-                    "joined_at": p.joined_at
+                    "identity": getattr(p, "identity", ""),
+                    "name": getattr(p, "name", ""),
+                    "state": str(getattr(p, "state", "")),
+                    "joined_at": getattr(p, "joined_at", None),
                 }
-                for p in participants.participants
+                for p in participants_list
             ]
 
             logger.debug(f"{len(result)} participant(s) dans {room_name}")
@@ -201,6 +203,98 @@ class LiveKitService:
         except Exception as e:
             logger.error(f"Erreur recuperation participants: {e}")
             return []
+
+    async def get_room_info(self, room_name: str) -> Dict[str, Any]:
+        """Récupère les informations d'une room LiveKit (existe, participants, etc.)"""
+        if not self.is_configured:
+            return {
+                "exists": False,
+                "room_name": room_name,
+                "message": "LiveKit non configuré"
+            }
+
+        logger.debug(f"Verification room LiveKit: {room_name}")
+
+        try:
+            async with api.LiveKitAPI(
+                url=self._api_url,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+            ) as lkapi:
+                # Essayer de lister les participants - si la room n'existe pas, cela lèvera une exception
+                resp = await lkapi.room.list_participants(
+                    api.ListParticipantsRequest(room=room_name)
+                )
+
+                participants_list = getattr(resp, "participants", []) or []
+                num_participants = len(participants_list)
+
+                # Essayer de récupérer les infos de la room
+                try:
+                    rooms_resp = await lkapi.room.list_rooms(
+                        api.ListRoomsRequest(names=[room_name])
+                    )
+                    rooms = getattr(rooms_resp, "rooms", []) or []
+                    room_info = rooms[0] if rooms else None
+                    
+                    if room_info:
+                        return {
+                            "exists": True,
+                            "room_name": room_name,
+                            "room_sid": getattr(room_info, "sid", None),
+                            "num_participants": num_participants,
+                            "creation_time": getattr(room_info, "creation_time", None),
+                            "empty_timeout": getattr(room_info, "empty_timeout", None),
+                            "max_participants": getattr(room_info, "max_participants", None),
+                            "participants": [
+                                {
+                                    "identity": getattr(p, "identity", ""),
+                                    "name": getattr(p, "name", ""),
+                                    "state": str(getattr(p, "state", "")),
+                                }
+                                for p in participants_list
+                            ]
+                        }
+                    else:
+                        return {
+                            "exists": False,
+                            "room_name": room_name,
+                            "message": "Room non trouvée dans LiveKit"
+                        }
+                except Exception as e:
+                    # Si list_rooms n'est pas disponible, on retourne juste les infos des participants
+                    logger.debug(f"list_rooms non disponible, utilisation des participants uniquement: {e}")
+                    return {
+                        "exists": True,
+                        "room_name": room_name,
+                        "num_participants": num_participants,
+                        "participants": [
+                            {
+                                "identity": getattr(p, "identity", ""),
+                                "name": getattr(p, "name", ""),
+                                "state": str(getattr(p, "state", "")),
+                            }
+                            for p in participants_list
+                        ]
+                    }
+
+        except Exception as e:
+            error_msg = str(e)
+            logger.warning(f"Erreur verification room LiveKit {room_name}: {error_msg}")
+            # Si l'erreur indique que la room n'existe pas
+            if "not found" in error_msg.lower() or "does not exist" in error_msg.lower():
+                return {
+                    "exists": False,
+                    "room_name": room_name,
+                    "message": f"Room non trouvée: {error_msg}"
+                }
+            else:
+                return {
+                    "exists": None,  # Incertain
+                    "room_name": room_name,
+                    "message": f"Erreur lors de la vérification: {error_msg}",
+                    "error": error_msg
+                }
 
     async def send_data(
         self,
@@ -215,20 +309,19 @@ class LiveKitService:
         logger.debug(f"Envoi data vers {room_name} ({len(data)} bytes)")
 
         try:
-            room_service = api.RoomServiceClient(
-                self.ws_url,
-                self.api_key,
-                self.api_secret
-            )
-
-            await room_service.send_data(
-                api.SendDataRequest(
-                    room=room_name,
-                    data=data,
-                    kind=api.DataPacket.Kind.RELIABLE,
-                    destination_identities=destination_identities or []
+            async with api.LiveKitAPI(
+                url=self._api_url,
+                api_key=self.api_key,
+                api_secret=self.api_secret,
+            ) as lkapi:
+                await lkapi.room.send_data(
+                    api.SendDataRequest(
+                        room=room_name,
+                        data=data,
+                        kind=api.DataPacket.Kind.RELIABLE,
+                        destination_identities=destination_identities or [],
+                    )
                 )
-            )
 
             return True
 

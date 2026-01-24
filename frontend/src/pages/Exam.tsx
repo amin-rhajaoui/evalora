@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useExam } from "@/contexts/ExamContext"
 import { transitionPhase, submitEvaluation, getFeedback, getAvatarMessages } from "@/services/api"
@@ -18,6 +18,7 @@ import {
   MessageCircle,
   User,
 } from "lucide-react"
+import { Room, RoomEvent, RemoteParticipant, RemoteTrackPublication, RemoteTrack, Track, LocalVideoTrack, LocalAudioTrack, createLocalVideoTrack, createLocalAudioTrack } from "livekit-client"
 
 const AVATAR_EMOJIS: Record<string, string> = {
   clea: "👩‍🏫",
@@ -48,6 +49,9 @@ export default function Exam() {
     setDebatDuration,
     setFeedback,
     tavusConversationUrl,
+    livekitToken,
+    livekitRoomName,
+    livekitWsUrl,
   } = useExam()
 
   const [elapsedTime, setElapsedTime] = useState(0)
@@ -56,12 +60,145 @@ export default function Exam() {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [debateQuestions, setDebateQuestions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [livekitConnected, setLivekitConnected] = useState(false)
+  const [livekitVideoTrack, setLivekitVideoTrack] = useState<RemoteTrack | null>(null)
+  const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | null>(null)
+  const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | null>(null)
+  const [cameraEnabled, setCameraEnabled] = useState(true)
+  const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
+  const avatarVideoRef = useRef<HTMLVideoElement>(null)
+  const userVideoRef = useRef<HTMLVideoElement>(null)
+  const roomRef = useRef<Room | null>(null)
 
   useEffect(() => {
     if (!session || !selectedDocument) {
       navigate("/")
     }
   }, [session, selectedDocument, navigate])
+
+  // Connexion LiveKit avec caméra et micro
+  // On se connecte toujours à LiveKit pour que l'utilisateur puisse se voir
+  // Même si Tavus est utilisé pour Clea
+  useEffect(() => {
+    // Vérifier que LiveKit est configuré
+    if (!livekitToken || !livekitRoomName || !livekitWsUrl) {
+      return
+    }
+
+    const connectToLiveKit = async () => {
+      try {
+        const room = new Room()
+        roomRef.current = room
+
+        // Gérer les tracks vidéo reçus (avatar)
+        room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+          if (track.kind === Track.Kind.Video) {
+            // Ne prendre que les tracks vidéo des autres participants (pas soi-même)
+            if (participant.identity !== room.localParticipant?.identity) {
+              setLivekitVideoTrack(track)
+              if (avatarVideoRef.current) {
+                track.attach(avatarVideoRef.current)
+              }
+            }
+          }
+        })
+
+        room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+          if (track.kind === Track.Kind.Video) {
+            track.detach()
+            setLivekitVideoTrack(null)
+          }
+        })
+
+        room.on(RoomEvent.Connected, async () => {
+          setLivekitConnected(true)
+          
+          // Activer la caméra et le micro de l'utilisateur
+          try {
+            if (cameraEnabled) {
+              const videoTrack = await createLocalVideoTrack({
+                facingMode: "user",
+                resolution: { width: 1280, height: 720 }
+              })
+              setLocalVideoTrack(videoTrack)
+              await room.localParticipant?.publishTrack(videoTrack)
+              
+              // Attacher la vidéo locale à l'élément vidéo utilisateur
+              if (userVideoRef.current) {
+                videoTrack.attach(userVideoRef.current)
+              }
+            }
+            
+            if (microphoneEnabled) {
+              const audioTrack = await createLocalAudioTrack()
+              setLocalAudioTrack(audioTrack)
+              await room.localParticipant?.publishTrack(audioTrack)
+            }
+          } catch (error) {
+            console.error("Erreur lors de l'activation de la caméra/micro:", error)
+          }
+        })
+
+        room.on(RoomEvent.Disconnected, () => {
+          setLivekitConnected(false)
+          setLivekitVideoTrack(null)
+          // Arrêter les tracks locaux
+          if (localVideoTrack) {
+            localVideoTrack.stop()
+            setLocalVideoTrack(null)
+          }
+          if (localAudioTrack) {
+            localAudioTrack.stop()
+            setLocalAudioTrack(null)
+          }
+        })
+
+        // Se connecter à la room
+        await room.connect(livekitWsUrl, livekitToken)
+      } catch (error) {
+        console.error("Erreur de connexion LiveKit:", error)
+        setLivekitConnected(false)
+      }
+    }
+
+    connectToLiveKit()
+
+    // Nettoyage à la déconnexion
+    return () => {
+      if (localVideoTrack) {
+        localVideoTrack.stop()
+        setLocalVideoTrack(null)
+      }
+      if (localAudioTrack) {
+        localAudioTrack.stop()
+        setLocalAudioTrack(null)
+      }
+      if (roomRef.current) {
+        roomRef.current.disconnect()
+        roomRef.current = null
+      }
+    }
+  }, [livekitToken, livekitRoomName, livekitWsUrl, cameraEnabled, microphoneEnabled])
+
+  // Attacher/détacher la vidéo de l'avatar quand le track change
+  useEffect(() => {
+    if (livekitVideoTrack && avatarVideoRef.current) {
+      livekitVideoTrack.attach(avatarVideoRef.current)
+      return () => {
+        livekitVideoTrack.detach()
+      }
+    }
+  }, [livekitVideoTrack])
+
+  // Attacher/détacher la vidéo locale de l'utilisateur
+  useEffect(() => {
+    if (localVideoTrack && userVideoRef.current) {
+      localVideoTrack.attach(userVideoRef.current)
+      return () => {
+        localVideoTrack.detach()
+      }
+    }
+  }, [localVideoTrack])
 
   useEffect(() => {
     async function loadMessages() {
@@ -174,6 +311,58 @@ export default function Exam() {
     }
   }, [session, elapsedTime, monologueDuration, selectedAvatar, setCurrentPhase, setDebatDuration, setFeedback, navigate])
 
+  // Toggle caméra
+  const toggleCamera = useCallback(async () => {
+    if (!roomRef.current) return
+    
+    if (cameraEnabled && localVideoTrack) {
+      // Désactiver la caméra
+      localVideoTrack.stop()
+      await roomRef.current.localParticipant?.unpublishTrack(localVideoTrack)
+      setLocalVideoTrack(null)
+      setCameraEnabled(false)
+    } else {
+      // Activer la caméra
+      try {
+        const videoTrack = await createLocalVideoTrack({
+          facingMode: "user",
+          resolution: { width: 1280, height: 720 }
+        })
+        setLocalVideoTrack(videoTrack)
+        await roomRef.current.localParticipant?.publishTrack(videoTrack)
+        if (userVideoRef.current) {
+          videoTrack.attach(userVideoRef.current)
+        }
+        setCameraEnabled(true)
+      } catch (error) {
+        console.error("Erreur activation caméra:", error)
+      }
+    }
+  }, [cameraEnabled, localVideoTrack])
+
+  // Toggle micro
+  const toggleMicrophone = useCallback(async () => {
+    if (!roomRef.current) return
+    
+    if (microphoneEnabled && localAudioTrack) {
+      // Désactiver le micro
+      localAudioTrack.stop()
+      await roomRef.current.localParticipant?.unpublishTrack(localAudioTrack)
+      setLocalAudioTrack(null)
+      setMicrophoneEnabled(false)
+    } else {
+      // Activer le micro
+      try {
+        const audioTrack = await createLocalAudioTrack()
+        setLocalAudioTrack(audioTrack)
+        await roomRef.current.localParticipant?.publishTrack(audioTrack)
+        setMicrophoneEnabled(true)
+      } catch (error) {
+        console.error("Erreur activation micro:", error)
+      }
+    }
+  }, [microphoneEnabled, localAudioTrack])
+
   useEffect(() => {
     if (currentPhase === "debat" && debateQuestions.length > 0 && currentQuestion === 0) {
       setTimeout(() => {
@@ -236,16 +425,88 @@ export default function Exam() {
       <div className="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-4">
-          {/* Avatar Zone */}
+          {/* Video Zone - Avatar et Utilisateur */}
           <Card className="overflow-hidden">
-            <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
-              {tavusConversationUrl ? (
+            {tavusConversationUrl ? (
+              <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
                 <iframe
                   src={tavusConversationUrl}
-                  className="w-full h-full"
-                  allow="camera; microphone; autoplay"
+                  className="w-full h-full border-0"
+                  allow="camera; microphone; autoplay; fullscreen"
+                  title="Conversation Tavus avec Clea"
                 />
-              ) : (
+                <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                  {selectedAvatar?.name || "Clea"}
+                </div>
+              </div>
+            ) : livekitConnected ? (
+              <div className="grid grid-cols-2 gap-2 p-2 bg-slate-900 aspect-video">
+                {/* Vidéo Avatar Cléa */}
+                <div className="relative bg-slate-800 rounded-lg overflow-hidden">
+                  {livekitVideoTrack ? (
+                    <video
+                      ref={avatarVideoRef}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      playsInline
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white">
+                      <div className="text-center">
+                        <div className="text-4xl mb-2">
+                          {selectedAvatar ? AVATAR_EMOJIS[selectedAvatar.id] : "👤"}
+                        </div>
+                        <p className="text-sm">{selectedAvatar?.name || "Avatar"}</p>
+                        <p className="text-xs text-slate-400 mt-1">En attente...</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                    {selectedAvatar?.name || "Avatar"}
+                  </div>
+                </div>
+
+                {/* Vidéo Utilisateur */}
+                <div className="relative bg-slate-800 rounded-lg overflow-hidden">
+                  {localVideoTrack ? (
+                    <video
+                      ref={userVideoRef}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      playsInline
+                      muted
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white">
+                      <div className="text-center">
+                        <User className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+                        <p className="text-sm">Vous</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {cameraEnabled ? "Activation caméra..." : "Caméra désactivée"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                    Vous
+                  </div>
+                  {/* Indicateurs caméra/micro */}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {!cameraEnabled && (
+                      <div className="bg-red-500 text-white text-xs px-2 py-1 rounded">
+                        📷 Off
+                      </div>
+                    )}
+                    {!microphoneEnabled && (
+                      <div className="bg-red-500 text-white text-xs px-2 py-1 rounded">
+                        🎤 Off
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="aspect-video bg-slate-900 flex items-center justify-center relative">
                 <div className="text-center text-white">
                   <div className="text-6xl mb-4 animate-float">
                     {selectedAvatar ? AVATAR_EMOJIS[selectedAvatar.id] : "👤"}
@@ -254,9 +515,13 @@ export default function Exam() {
                     {selectedAvatar?.name || "Examinateur"}
                   </p>
                   <p className="text-sm text-slate-400 mt-1">
-                    {currentPhase === "monologue" ? "En ecoute..." : "Mode texte"}
+                    {livekitToken && !livekitConnected
+                      ? "Connexion en cours..."
+                      : currentPhase === "monologue"
+                      ? "En ecoute..."
+                      : "Mode texte"}
                   </p>
-                  {currentPhase !== "monologue" && (
+                  {currentPhase !== "monologue" && !livekitToken && (
                     <div className="flex justify-center gap-1 mt-4">
                       {[0, 1, 2].map((i) => (
                         <div
@@ -268,8 +533,8 @@ export default function Exam() {
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </Card>
 
           {/* Document */}
@@ -362,47 +627,107 @@ export default function Exam() {
             </CardContent>
           </Card>
 
-          {/* Mic Status */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center",
-                    isTimerRunning ? "bg-green-100" : "bg-slate-100"
-                  )}>
-                    {isTimerRunning ? (
-                      <Mic className="w-5 h-5 text-green-600" />
+          {/* Controls - Caméra et Micro */}
+          {livekitConnected && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  {/* Contrôle Caméra */}
+                  <Button
+                    variant={cameraEnabled ? "default" : "outline"}
+                    size="sm"
+                    onClick={toggleCamera}
+                    className="flex items-center gap-2"
+                  >
+                    {cameraEnabled ? (
+                      <>
+                        <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        Caméra activée
+                      </>
                     ) : (
-                      <MicOff className="w-5 h-5 text-slate-400" />
+                      <>
+                        <div className="w-2 h-2 bg-red-500 rounded-full" />
+                        Caméra désactivée
+                      </>
                     )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">
-                      {isTimerRunning ? "Micro actif" : "Micro inactif"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {isTimerRunning ? "Vous pouvez parler" : "En attente"}
-                    </p>
+                  </Button>
+
+                  {/* Contrôle Micro */}
+                  <Button
+                    variant={microphoneEnabled ? "default" : "outline"}
+                    size="sm"
+                    onClick={toggleMicrophone}
+                    className="flex items-center gap-2"
+                  >
+                    {microphoneEnabled ? (
+                      <>
+                        <Mic className="w-4 h-4" />
+                        Micro activé
+                      </>
+                    ) : (
+                      <>
+                        <MicOff className="w-4 h-4" />
+                        Micro désactivé
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Statut connexion */}
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className={cn(
+                      "w-2 h-2 rounded-full",
+                      livekitConnected ? "bg-green-500" : "bg-red-500"
+                    )} />
+                    {livekitConnected ? "Connecté" : "Déconnecté"}
                   </div>
                 </div>
-                {isTimerRunning && (
-                  <div className="flex gap-1">
-                    {[0, 1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="w-1 bg-green-500 rounded-full animate-wave"
-                        style={{
-                          height: `${12 + Math.random() * 12}px`,
-                          animationDelay: `${i * 0.1}s`,
-                        }}
-                      />
-                    ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Mic Status (si pas LiveKit) */}
+          {!livekitConnected && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center",
+                      isTimerRunning ? "bg-green-100" : "bg-slate-100"
+                    )}>
+                      {isTimerRunning ? (
+                        <Mic className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <MicOff className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">
+                        {isTimerRunning ? "Micro actif" : "Micro inactif"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {isTimerRunning ? "Vous pouvez parler" : "En attente"}
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  {isTimerRunning && (
+                    <div className="flex gap-1">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="w-1 bg-green-500 rounded-full animate-wave"
+                          style={{
+                            height: `${12 + Math.random() * 12}px`,
+                            animationDelay: `${i * 0.1}s`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

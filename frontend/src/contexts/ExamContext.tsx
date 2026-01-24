@@ -22,6 +22,10 @@ interface ExamContextType {
   setFeedback: (feedback: Feedback | null) => void
   livekitToken: string | null
   setLivekitToken: (token: string | null) => void
+  livekitRoomName: string | null
+  setLivekitRoomName: (name: string | null) => void
+  livekitWsUrl: string | null
+  setLivekitWsUrl: (url: string | null) => void
   tavusConversationUrl: string | null
   setTavusConversationUrl: (url: string | null) => void
   resetExam: () => void
@@ -40,6 +44,8 @@ export function ExamProvider({ children }: { children: ReactNode }) {
   const [debatDuration, setDebatDuration] = useState(0)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [livekitToken, setLivekitToken] = useState<string | null>(null)
+  const [livekitRoomName, setLivekitRoomName] = useState<string | null>(null)
+  const [livekitWsUrl, setLivekitWsUrl] = useState<string | null>(null)
   const [tavusConversationUrl, setTavusConversationUrl] = useState<string | null>(null)
 
   const resetExam = () => {
@@ -53,6 +59,8 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     setDebatDuration(0)
     setFeedback(null)
     setLivekitToken(null)
+    setLivekitRoomName(null)
+    setLivekitWsUrl(null)
     setTavusConversationUrl(null)
   }
 
@@ -79,6 +87,10 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         setFeedback,
         livekitToken,
         setLivekitToken,
+        livekitRoomName,
+        setLivekitRoomName,
+        livekitWsUrl,
+        setLivekitWsUrl,
         tavusConversationUrl,
         setTavusConversationUrl,
         resetExam,

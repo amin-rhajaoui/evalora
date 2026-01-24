@@ -48,6 +48,10 @@ class Evaluation(BaseModel):
     feedback_tone: str = "neutral"  # Adapté au ton de l'avatar
     created_at: datetime = Field(default_factory=datetime.now)
 
+    # Durées (secondes) pour format_duration dans le feedback
+    monologue_duration: Optional[int] = None
+    debat_duration: Optional[int] = None
+
 
 class EvaluationResponse(BaseModel):
     """Réponse API pour une évaluation"""

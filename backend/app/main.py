@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings, logger
-from .routers import session, documents, avatar, livekit, evaluation
+from .routers import session, documents, avatar, livekit, evaluation, tavus
 
 
 @asynccontextmanager
@@ -48,6 +48,7 @@ app.include_router(documents.router, prefix="/api/documents", tags=["Documents"]
 app.include_router(avatar.router, prefix="/api/avatar", tags=["Avatar"])
 app.include_router(livekit.router, prefix="/api/livekit", tags=["LiveKit"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["Evaluation"])
+app.include_router(tavus.router, prefix="/api/tavus", tags=["Tavus"])
 
 
 @app.get("/")

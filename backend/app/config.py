@@ -35,7 +35,16 @@ class Settings(BaseSettings):
 
     # Tavus Configuration
     TAVUS_API_KEY: Optional[str] = None
+    # Essayer d'abord api.tavus.io, sinon tavusapi.com selon la doc
     TAVUS_BASE_URL: str = "https://api.tavus.io/v2"
+    
+    # Tavus Network Configuration (optional)
+    TAVUS_HTTP_PROXY: Optional[str] = None
+    TAVUS_HTTPS_PROXY: Optional[str] = None
+    TAVUS_CONNECT_TIMEOUT: float = 10.0
+    TAVUS_READ_TIMEOUT: float = 30.0
+    TAVUS_MAX_RETRIES: int = 3
+    TAVUS_RETRY_BACKOFF: float = 1.5
 
     class Config:
         env_file = ".env"
@@ -64,6 +73,26 @@ class Settings(BaseSettings):
             logger.info(f"Tavus           : CONFIGURE")
             logger.info(f"  - Base URL    : {self.TAVUS_BASE_URL}")
             logger.info(f"  - API Key     : {self.TAVUS_API_KEY[:8]}...")
+            if self.TAVUS_HTTP_PROXY or self.TAVUS_HTTPS_PROXY:
+                proxy_info = []
+                if self.TAVUS_HTTP_PROXY:
+                    # Masquer les credentials dans les logs
+                    proxy_url = self.TAVUS_HTTP_PROXY
+                    if "@" in proxy_url:
+                        parts = proxy_url.split("@")
+                        proxy_info.append(f"HTTP: {parts[0].split('://')[0]}://***@{parts[1]}")
+                    else:
+                        proxy_info.append(f"HTTP: {proxy_url}")
+                if self.TAVUS_HTTPS_PROXY:
+                    proxy_url = self.TAVUS_HTTPS_PROXY
+                    if "@" in proxy_url:
+                        parts = proxy_url.split("@")
+                        proxy_info.append(f"HTTPS: {parts[0].split('://')[0]}://***@{parts[1]}")
+                    else:
+                        proxy_info.append(f"HTTPS: {proxy_url}")
+                logger.info(f"  - Proxy       : {', '.join(proxy_info)}")
+            logger.info(f"  - Timeouts    : connect={self.TAVUS_CONNECT_TIMEOUT}s, read={self.TAVUS_READ_TIMEOUT}s")
+            logger.info(f"  - Retries     : max={self.TAVUS_MAX_RETRIES}, backoff={self.TAVUS_RETRY_BACKOFF}")
         else:
             logger.warning("Tavus           : NON CONFIGURE (mode texte)")
 
@@ -85,7 +114,8 @@ AVATARS = {
         "role": "Met à l'aise l'étudiant, crée un climat de confiance.",
         "behavior": "Sourit souvent, parle calmement, valorise les efforts, reformule pour aider.",
         "feedback_tone": "Chaleureux, empathique et motivant.",
-        "tavus_replica_id": "r9fa087897a",
+        "tavus_replica_id": "r9fa0878977a",  # "Olivia - Office" - Corrigé: il y avait un 7 manquant
+        "tavus_persona_id": "p0bd677850df",  # À remplacer par le persona_id réel
         "placeholder_image": "/assets/avatars/clea.png"
     },
     "alex": {

@@ -83,7 +83,9 @@ class EvaluationService:
             strengths=strengths,
             improvements=improvements,
             advice=advice,
-            created_at=datetime.now()
+            created_at=datetime.now(),
+            monologue_duration=monologue_duration,
+            debat_duration=debat_duration,
         )
 
     def _evaluate_monologue(

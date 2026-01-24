@@ -2,16 +2,19 @@
 Router pour la gestion des sessions d'examen
 """
 from fastapi import APIRouter, HTTPException
-from typing import Dict
+from typing import Dict, Optional
 import uuid
+import logging
 
 from ..models.session import (
     Session, SessionCreate, SessionResponse,
     ExamPhase, PhaseTransition
 )
 from ..config import AVATARS, settings
+from ..services.tavus_service import TavusService
 
 router = APIRouter()
+logger = logging.getLogger("evalora.session")
 
 # Stockage en mémoire (à remplacer par une BDD en production)
 sessions: Dict[str, Session] = {}
@@ -24,7 +27,7 @@ async def create_session(data: SessionCreate):
 
     - Enregistre le prénom et le niveau de l'étudiant
     - Associe l'avatar choisi (ou None pour mode sans avatar)
-    - Prépare la session LiveKit et Tavus si configurés
+    - Prépare la session LiveKit (room, token) si configuré
     """
     session_id = str(uuid.uuid4())
 
@@ -44,6 +47,29 @@ async def create_session(data: SessionCreate):
     avatar_info = None
     if data.avatar_id and data.avatar_id in AVATARS:
         avatar_info = AVATARS[data.avatar_id]
+        
+        # Créer la conversation Tavus si l'avatar a les IDs configurés
+        replica_id = avatar_info.get("tavus_replica_id")
+        persona_id = avatar_info.get("tavus_persona_id")
+        
+        if replica_id and persona_id:
+            try:
+                tavus_service = TavusService()
+                if tavus_service.is_configured:
+                    conversation_result = await tavus_service.create_conversation(
+                        replica_id=replica_id,
+                        persona_id=persona_id,
+                        conversation_name=f"Session {session_id} - {data.student_name}"
+                    )
+                    
+                    if conversation_result.get("status") == "created":
+                        session.tavus_conversation_id = conversation_result.get("conversation_id")
+                        session.tavus_conversation_url = conversation_result.get("conversation_url")
+                        logger.info(f"Conversation Tavus créée pour session {session_id}: {session.tavus_conversation_id}")
+                    else:
+                        logger.warning(f"Échec création conversation Tavus: {conversation_result.get('message')}")
+            except Exception as e:
+                logger.error(f"Erreur lors de la création de la conversation Tavus: {e}")
 
     return SessionResponse(
         id=session.id,
@@ -55,6 +81,7 @@ async def create_session(data: SessionCreate):
         current_phase=session.current_phase,
         livekit_token=session.livekit_token,
         livekit_url=settings.LIVEKIT_URL if settings.LIVEKIT_API_KEY else None,
+        tavus_conversation_id=session.tavus_conversation_id,
         tavus_conversation_url=session.tavus_conversation_url,
         created_at=session.created_at
     )
@@ -81,6 +108,7 @@ async def get_session(session_id: str):
         current_phase=session.current_phase,
         livekit_token=session.livekit_token,
         livekit_url=settings.LIVEKIT_URL if settings.LIVEKIT_API_KEY else None,
+        tavus_conversation_id=session.tavus_conversation_id,
         tavus_conversation_url=session.tavus_conversation_url,
         created_at=session.created_at
     )
@@ -107,12 +135,13 @@ async def transition_phase(session_id: str, transition: PhaseTransition):
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
     session = sessions[session_id]
+    previous_phase = session.current_phase
 
     # Enregistrer la durée de la phase précédente
     if transition.phase_duration:
-        if session.current_phase == ExamPhase.MONOLOGUE:
+        if previous_phase == ExamPhase.MONOLOGUE:
             session.monologue_duration = transition.phase_duration
-        elif session.current_phase == ExamPhase.DEBAT:
+        elif previous_phase == ExamPhase.DEBAT:
             session.debat_duration = transition.phase_duration
 
     # Mettre à jour la phase
@@ -120,7 +149,7 @@ async def transition_phase(session_id: str, transition: PhaseTransition):
 
     return {
         "status": "ok",
-        "previous_phase": session.current_phase,
+        "previous_phase": previous_phase,
         "new_phase": transition.new_phase,
         "session_id": session_id
     }

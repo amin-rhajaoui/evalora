@@ -1,31 +1,20 @@
 """
-Router pour la gestion des avatars (Tavus)
+Router pour la gestion des avatars.
+
+Les avatars sont utilisés par l'Agent LiveKit (config, messages par phase).
+Aucune logique Tavus conversation : Tavus = rendu seul, piloté par l'Agent.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List
 
 from ..config import AVATARS, settings
-from ..services.tavus_service import TavusService
 
 router = APIRouter()
-tavus_service = TavusService()
 
 
 class AvatarListResponse(BaseModel):
     avatars: List[dict]
-
-
-class InitAvatarRequest(BaseModel):
-    session_id: str
-    avatar_id: str
-    student_name: str
-
-
-class SpeakRequest(BaseModel):
-    conversation_id: str
-    text: str
-    message_type: str = "normal"  # normal, question, feedback
 
 
 @router.get("", response_model=AvatarListResponse)
@@ -77,70 +66,7 @@ async def get_avatar(avatar_id: str):
     }
 
 
-@router.post("/init")
-async def init_avatar(request: InitAvatarRequest):
-    """
-    Initialise une conversation Tavus pour un avatar.
-
-    PLACEHOLDER: Retourne des données mock si Tavus n'est pas configuré.
-    Quand Tavus sera configuré, cette méthode créera une vraie conversation vidéo.
-    """
-    if request.avatar_id not in AVATARS:
-        raise HTTPException(status_code=404, detail="Avatar non trouvé")
-
-    avatar = AVATARS[request.avatar_id]
-
-    # Appeler le service Tavus
-    result = await tavus_service.create_conversation(
-        replica_id=avatar["tavus_replica_id"],
-        session_id=request.session_id,
-        student_name=request.student_name,
-        avatar_config=avatar
-    )
-
-    return {
-        "avatar_id": request.avatar_id,
-        "avatar_name": avatar["name"],
-        "conversation_id": result["conversation_id"],
-        "conversation_url": result.get("conversation_url"),
-        "stream_url": result.get("stream_url"),
-        "status": result["status"],
-        "mode": "tavus" if result["status"] != "placeholder" else "text",
-        "message": result.get("message", "")
-    }
-
-
-@router.post("/speak")
-async def make_avatar_speak(request: SpeakRequest):
-    """
-    Fait parler l'avatar (envoie un message à Tavus).
-
-    PLACEHOLDER: Retourne le texte si Tavus n'est pas configuré.
-    """
-    result = await tavus_service.send_message(
-        conversation_id=request.conversation_id,
-        text=request.text,
-        avatar_personality={}
-    )
-
-    return {
-        "conversation_id": request.conversation_id,
-        "text": request.text,
-        "message_type": request.message_type,
-        "audio_url": result.get("audio_url"),
-        "video_url": result.get("video_url"),
-        "status": result["status"]
-    }
-
-
-@router.post("/end/{conversation_id}")
-async def end_avatar_conversation(conversation_id: str):
-    """Termine la conversation Tavus"""
-    result = await tavus_service.end_conversation(conversation_id)
-    return result
-
-
-# Messages pré-définis par phase et par avatar
+# Messages pré-définis par phase et par avatar (utilisés par l'Agent)
 @router.get("/{avatar_id}/messages/{phase}")
 async def get_avatar_messages(avatar_id: str, phase: str):
     """

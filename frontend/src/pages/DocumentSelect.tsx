@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useExam } from "@/contexts/ExamContext"
-import { getDocuments, createSession, initAvatar } from "@/services/api"
+import { getDocuments, createSession, createLivekitRoom, getLivekitToken } from "@/services/api"
 import { Document } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -53,6 +53,9 @@ export default function DocumentSelect() {
     selectedDocument,
     setSelectedDocument,
     setSession,
+    setLivekitToken,
+    setLivekitRoomName,
+    setLivekitWsUrl,
     setTavusConversationUrl,
   } = useExam()
 
@@ -92,19 +95,21 @@ export default function DocumentSelect() {
       })
       setSession(session)
 
-      if (selectedAvatar && session.id) {
-        try {
-          const avatarResult = await initAvatar({
-            session_id: session.id,
-            avatar_id: selectedAvatar.id,
-            student_name: studentName,
-          })
-          if (avatarResult.conversation_url) {
-            setTavusConversationUrl(avatarResult.conversation_url)
-          }
-        } catch {
-          // Avatar init failed - continue without avatar
+      // Récupérer l'URL de conversation Tavus si disponible
+      if (session.tavus_conversation_url) {
+        setTavusConversationUrl(session.tavus_conversation_url)
+      }
+
+      try {
+        const roomRes = await createLivekitRoom(session.id)
+        const tokenRes = await getLivekitToken(roomRes.room_name, `student-${session.id}`)
+        if (tokenRes.token) {
+          setLivekitToken(tokenRes.token)
+          setLivekitRoomName(roomRes.room_name)
+          if (tokenRes.ws_url) setLivekitWsUrl(tokenRes.ws_url)
         }
+      } catch {
+        // LiveKit non configuré ou erreur - mode simulation, on continue
       }
 
       navigate("/exam")
@@ -187,7 +192,9 @@ export default function DocumentSelect() {
                 {starting ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Demarrage...
+                    {selectedAvatar
+                      ? "Preparation de l'avatar (1–2 min)..."
+                      : "Demarrage..."}
                   </>
                 ) : (
                   <>

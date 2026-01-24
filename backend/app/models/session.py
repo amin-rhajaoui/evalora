@@ -47,7 +47,7 @@ class Session(BaseModel):
     # LiveKit
     livekit_room_name: Optional[str] = None
     livekit_token: Optional[str] = None
-
+    
     # Tavus
     tavus_conversation_id: Optional[str] = None
     tavus_conversation_url: Optional[str] = None
@@ -64,6 +64,7 @@ class SessionResponse(BaseModel):
     current_phase: ExamPhase
     livekit_token: Optional[str] = None
     livekit_url: Optional[str] = None
+    tavus_conversation_id: Optional[str] = None
     tavus_conversation_url: Optional[str] = None
     created_at: datetime
 

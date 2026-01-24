@@ -62,36 +62,6 @@ export async function getAvatar(avatarId: string): Promise<Avatar> {
   return response.data
 }
 
-export async function initAvatar(data: {
-  session_id: string
-  avatar_id: string
-  student_name: string
-}): Promise<{
-  avatar_id: string
-  avatar_name: string
-  conversation_id: string
-  conversation_url?: string
-  status: string
-  mode: string
-}> {
-  const response = await api.post("/avatar/init", data)
-  return response.data
-}
-
-export async function makeAvatarSpeak(data: {
-  conversation_id: string
-  text: string
-  message_type?: string
-}): Promise<{
-  text: string
-  audio_url?: string
-  video_url?: string
-  status: string
-}> {
-  const response = await api.post("/avatar/speak", data)
-  return response.data
-}
-
 export async function getAvatarMessages(
   avatarId: string,
   phase: string
@@ -155,6 +125,29 @@ export async function getFeedback(
 ): Promise<Feedback> {
   const params = avatarId ? `?avatar_id=${avatarId}` : ""
   const response = await api.get(`/evaluation/${sessionId}${params}`)
+  return response.data
+}
+
+export async function getTavusStatus(): Promise<{
+  configured: boolean
+  base_url?: string
+}> {
+  const response = await api.get("/tavus/status")
+  return response.data
+}
+
+export async function createTavusConversation(data: {
+  session_id: string
+  avatar_id: string
+  conversation_name?: string
+  callback_url?: string
+}): Promise<{
+  conversation_id: string | null
+  conversation_url: string | null
+  status: string
+  message: string
+}> {
+  const response = await api.post("/tavus/conversation", data)
   return response.data
 }
 
