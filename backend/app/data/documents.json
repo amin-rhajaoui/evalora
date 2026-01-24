@@ -1,0 +1,156 @@
+{
+  "documents": [
+    {
+      "id": "doc-1-societe",
+      "title": "Les réseaux sociaux et les jeunes",
+      "theme": "société",
+      "author": "Marie Dupont",
+      "source": "Le Monde",
+      "date": "15 mars 2024",
+      "text": "Aujourd'hui, les réseaux sociaux font partie de la vie quotidienne des jeunes. Selon une étude récente, les adolescents passent en moyenne trois heures par jour sur Instagram, TikTok ou Snapchat. Ces plateformes permettent de rester en contact avec ses amis, de partager des moments de vie et de découvrir des contenus variés. Cependant, certains experts s'inquiètent des effets sur la santé mentale : comparaison sociale, addiction aux écrans, cyberharcèlement. Les parents et les éducateurs cherchent un équilibre entre interdire et accompagner. La question reste ouverte : comment utiliser ces outils de manière positive ?",
+      "image_url": "/assets/documents/reseaux-sociaux.jpg",
+      "keywords": ["réseaux sociaux", "jeunes", "adolescents", "écrans", "santé mentale", "cyberharcèlement", "Instagram", "TikTok"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "Penses-tu que les réseaux sociaux ont plus d'avantages ou d'inconvénients pour les jeunes ?",
+        "Combien de temps par jour passes-tu sur les réseaux sociaux ?",
+        "Dans ton pays, les jeunes utilisent-ils beaucoup les réseaux sociaux ?",
+        "Que ferais-tu pour limiter l'addiction aux écrans ?",
+        "Certains disent qu'il faut interdire les réseaux sociaux aux moins de 16 ans. Qu'en penses-tu ?"
+      ]
+    },
+    {
+      "id": "doc-2-culture",
+      "title": "Les musées gratuits pour tous",
+      "theme": "culture",
+      "author": "Pierre Martin",
+      "source": "France Culture",
+      "date": "22 janvier 2024",
+      "text": "En France, de nombreux musées nationaux sont gratuits le premier dimanche de chaque mois. Cette initiative permet à tous d'accéder à la culture, quel que soit son budget. Le Louvre, Orsay ou le Centre Pompidou accueillent alors des milliers de visiteurs. Pour certains, c'est une découverte ; pour d'autres, une habitude familiale. Les défenseurs de cette mesure estiment que l'art doit être accessible à tous. Les critiques soulignent que les musées sont trop bondés ces jours-là, ce qui nuit à l'expérience. Faut-il rendre les musées totalement gratuits ou maintenir ce compromis ?",
+      "image_url": "/assets/documents/musees.jpg",
+      "keywords": ["musée", "culture", "gratuit", "art", "Louvre", "accessibilité", "patrimoine"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "Penses-tu que les musées devraient être gratuits pour tout le monde ?",
+        "Quand as-tu visité un musée pour la dernière fois ?",
+        "Dans ton pays, les musées sont-ils accessibles à tous ?",
+        "Préfères-tu visiter un musée seul ou avec un guide ?",
+        "Comment pourrait-on rendre la culture plus accessible aux jeunes ?"
+      ]
+    },
+    {
+      "id": "doc-3-environnement",
+      "title": "Le tri des déchets : un geste simple mais essentiel",
+      "theme": "environnement",
+      "author": "Sophie Leroy",
+      "source": "Libération",
+      "date": "5 juin 2024",
+      "text": "Le tri des déchets est devenu une habitude pour beaucoup de Français. Poubelle jaune pour le plastique et le carton, poubelle verte pour le verre, poubelle grise pour les ordures ménagères. Ce geste quotidien contribue au recyclage et à la protection de l'environnement. Pourtant, les erreurs de tri restent fréquentes : un déchet mal trié peut contaminer tout un lot. Les municipalités multiplient les campagnes de sensibilisation. Certains pays vont plus loin avec des amendes pour ceux qui ne trient pas. Le tri est-il suffisant pour sauver la planète, ou faut-il aller plus loin ?",
+      "image_url": "/assets/documents/recyclage.jpg",
+      "keywords": ["tri", "recyclage", "déchets", "environnement", "écologie", "plastique", "poubelle"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "Est-ce que tu tries tes déchets à la maison ?",
+        "Penses-tu que le recyclage est suffisant pour protéger l'environnement ?",
+        "Dans ton pays, comment fonctionne le tri des déchets ?",
+        "Serais-tu favorable à des amendes pour ceux qui ne trient pas ?",
+        "Quels autres gestes écologiques fais-tu au quotidien ?"
+      ]
+    },
+    {
+      "id": "doc-4-numerique",
+      "title": "L'intelligence artificielle dans notre quotidien",
+      "theme": "numérique",
+      "author": "Thomas Bernard",
+      "source": "Les Échos",
+      "date": "10 février 2024",
+      "text": "L'intelligence artificielle est partout : dans nos téléphones, nos voitures, nos achats en ligne. Les assistants vocaux comme Siri ou Alexa répondent à nos questions. Les algorithmes nous suggèrent des films ou de la musique. ChatGPT peut écrire des textes ou répondre à des questions complexes. Cette technologie facilite notre vie, mais soulève des questions. L'IA va-t-elle remplacer certains métiers ? Comment protéger nos données personnelles ? Les experts appellent à une utilisation responsable et à une régulation de ces technologies.",
+      "image_url": "/assets/documents/intelligence-artificielle.jpg",
+      "keywords": ["intelligence artificielle", "IA", "technologie", "algorithme", "ChatGPT", "assistant vocal", "futur"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "Utilises-tu l'intelligence artificielle dans ta vie quotidienne ?",
+        "Penses-tu que l'IA est une bonne chose pour la société ?",
+        "As-tu peur que l'IA remplace certains métiers ?",
+        "Comment peut-on utiliser l'IA de manière responsable ?",
+        "Dans ton domaine d'études, l'IA pourrait-elle être utile ?"
+      ]
+    },
+    {
+      "id": "doc-5-travail",
+      "title": "Le télétravail : une nouvelle façon de travailler",
+      "theme": "travail",
+      "author": "Camille Roux",
+      "source": "Le Figaro",
+      "date": "18 septembre 2024",
+      "text": "Depuis la pandémie de Covid-19, le télétravail s'est généralisé dans de nombreuses entreprises. Travailler depuis chez soi offre plus de flexibilité : pas de transport, meilleur équilibre vie professionnelle et vie personnelle. Certains apprécient le calme et la concentration. D'autres regrettent le manque de contact humain et la difficulté à séparer travail et repos. Les entreprises cherchent le bon équilibre avec le travail hybride : quelques jours au bureau, quelques jours à la maison. Cette organisation est-elle l'avenir du travail ?",
+      "image_url": "/assets/documents/teletravail.jpg",
+      "keywords": ["télétravail", "travail", "bureau", "flexibilité", "Covid", "hybride", "entreprise"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "Préfères-tu travailler à la maison ou au bureau ?",
+        "Quels sont les avantages et les inconvénients du télétravail ?",
+        "Dans ton pays, le télétravail est-il courant ?",
+        "Comment rester motivé quand on travaille seul chez soi ?",
+        "Penses-tu que le télétravail va se développer à l'avenir ?"
+      ]
+    },
+    {
+      "id": "doc-6-education",
+      "title": "L'apprentissage en ligne : révolution ou complément ?",
+      "theme": "éducation",
+      "author": "Julie Moreau",
+      "source": "L'Étudiant",
+      "date": "3 novembre 2024",
+      "text": "Les cours en ligne se sont multipliés ces dernières années. Plateformes comme Coursera, Duolingo ou Khan Academy permettent d'apprendre à son rythme, depuis n'importe où. Pour certains, c'est une révolution : accès à des formations prestigieuses, flexibilité des horaires, coût réduit. Pour d'autres, rien ne remplace le contact direct avec un professeur et les échanges avec d'autres étudiants. Les universités proposent de plus en plus de formations hybrides. L'éducation de demain sera-t-elle entièrement numérique ?",
+      "image_url": "/assets/documents/cours-en-ligne.jpg",
+      "keywords": ["éducation", "cours en ligne", "e-learning", "université", "formation", "numérique", "étudiant"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "As-tu déjà suivi des cours en ligne ?",
+        "Préfères-tu les cours en présentiel ou en ligne ?",
+        "Quels sont les avantages de l'apprentissage en ligne ?",
+        "Penses-tu qu'on apprend aussi bien en ligne qu'en classe ?",
+        "Comment imagines-tu l'école du futur ?"
+      ]
+    },
+    {
+      "id": "doc-7-diversite",
+      "title": "La richesse des langues du monde",
+      "theme": "diversité",
+      "author": "Ahmed Hassan",
+      "source": "Courrier International",
+      "date": "21 février 2024",
+      "text": "Il existe environ 7 000 langues dans le monde, mais beaucoup sont en danger de disparition. Une langue meurt toutes les deux semaines. Chaque langue porte une culture, une vision du monde, des connaissances uniques. L'anglais domine les échanges internationaux, mais de plus en plus de personnes défendent le plurilinguisme. Apprendre plusieurs langues développe l'ouverture d'esprit et les capacités cognitives. Aux Émirats arabes unis, le français, l'anglais et l'arabe cohabitent. Comment préserver cette diversité linguistique ?",
+      "image_url": "/assets/documents/langues-monde.jpg",
+      "keywords": ["langues", "diversité", "plurilinguisme", "culture", "disparition", "anglais", "français", "arabe"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "Combien de langues parles-tu ?",
+        "Pourquoi as-tu décidé d'apprendre le français ?",
+        "Penses-tu qu'il est important de préserver les langues en danger ?",
+        "L'anglais devrait-il être la seule langue internationale ?",
+        "Dans ton pays, quelles langues sont parlées ?"
+      ]
+    },
+    {
+      "id": "doc-8-relations",
+      "title": "L'amitié à l'ère numérique",
+      "theme": "relations humaines",
+      "author": "Laura Costa",
+      "source": "Psychologies Magazine",
+      "date": "8 avril 2024",
+      "text": "Avec les réseaux sociaux, nous avons des centaines d'« amis » en ligne. Mais ces relations virtuelles sont-elles de vraies amitiés ? Les chercheurs distinguent les contacts numériques des amis proches avec qui l'on partage des moments de vie. La technologie permet de maintenir le contact à distance, mais elle ne remplace pas les rencontres en personne. Certains jeunes préfèrent envoyer un message plutôt que téléphoner ou voir leurs amis. L'amitié change-t-elle de nature avec le numérique, ou reste-t-elle fondamentalement la même ?",
+      "image_url": "/assets/documents/amitie-numerique.jpg",
+      "keywords": ["amitié", "relations", "numérique", "réseaux sociaux", "contact", "virtuel", "rencontre"],
+      "difficulty": "B1",
+      "debate_questions": [
+        "Combien d'amis proches as-tu ?",
+        "Penses-tu qu'on peut avoir de vrais amis sur internet ?",
+        "Préfères-tu envoyer un message ou appeler tes amis ?",
+        "L'amitié est-elle différente aujourd'hui par rapport à avant ?",
+        "Qu'est-ce qui est important pour toi dans une amitié ?"
+      ]
+    }
+  ]
+}
