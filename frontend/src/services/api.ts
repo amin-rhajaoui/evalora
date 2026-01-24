@@ -104,6 +104,14 @@ export async function getLivekitToken(
   return response.data
 }
 
+export async function deleteLivekitRoom(roomName: string): Promise<{
+  status: string
+  room_name: string
+}> {
+  const response = await api.delete(`/livekit/room/${roomName}`)
+  return response.data
+}
+
 export async function submitEvaluation(data: {
   session_id: string
   monologue_transcript?: string

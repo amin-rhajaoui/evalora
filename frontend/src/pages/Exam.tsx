@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useExam } from "@/contexts/ExamContext"
-import { transitionPhase, submitEvaluation, getFeedback, getAvatarMessages } from "@/services/api"
+import { transitionPhase, submitEvaluation, getFeedback, getAvatarMessages, deleteLivekitRoom } from "@/services/api"
 import { ExamPhase } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -62,11 +62,13 @@ export default function Exam() {
   const [isLoading, setIsLoading] = useState(false)
   const [livekitConnected, setLivekitConnected] = useState(false)
   const [livekitVideoTrack, setLivekitVideoTrack] = useState<RemoteTrack | null>(null)
+  const [livekitAudioTrack, setLivekitAudioTrack] = useState<RemoteTrack | null>(null)
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | null>(null)
   const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | null>(null)
   const [cameraEnabled, setCameraEnabled] = useState(true)
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
   const avatarVideoRef = useRef<HTMLVideoElement>(null)
+  const avatarAudioRef = useRef<HTMLAudioElement>(null)
   const userVideoRef = useRef<HTMLVideoElement>(null)
   const roomRef = useRef<Room | null>(null)
 
@@ -75,6 +77,30 @@ export default function Exam() {
       navigate("/")
     }
   }, [session, selectedDocument, navigate])
+
+  // Gestionnaire pour supprimer la room quand l'utilisateur quitte la page
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (livekitRoomName && roomRef.current) {
+        // Déconnecter de LiveKit
+        roomRef.current.disconnect()
+        // Supprimer la room (envoi synchrone via sendBeacon si possible)
+        try {
+          await fetch(`/api/livekit/room/${livekitRoomName}`, {
+            method: "DELETE",
+            keepalive: true,
+          })
+        } catch (error) {
+          console.error("Erreur lors de la suppression de la room:", error)
+        }
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [livekitRoomName])
 
   // Connexion LiveKit avec caméra et micro
   // On se connecte toujours à LiveKit pour que l'utilisateur puisse se voir
@@ -90,15 +116,26 @@ export default function Exam() {
         const room = new Room()
         roomRef.current = room
 
-        // Gérer les tracks vidéo reçus (avatar)
+        // Gérer les tracks reçus (avatar - vidéo et audio)
         room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+          // Ne prendre que les tracks des autres participants (pas soi-même)
+          if (participant.identity === room.localParticipant?.identity) {
+            return
+          }
+
+          console.log(`Track reçu de ${participant.identity}:`, track.kind, track.source)
+
           if (track.kind === Track.Kind.Video) {
-            // Ne prendre que les tracks vidéo des autres participants (pas soi-même)
-            if (participant.identity !== room.localParticipant?.identity) {
-              setLivekitVideoTrack(track)
-              if (avatarVideoRef.current) {
-                track.attach(avatarVideoRef.current)
-              }
+            setLivekitVideoTrack(track)
+            if (avatarVideoRef.current) {
+              track.attach(avatarVideoRef.current)
+              console.log("Track vidéo avatar attaché")
+            }
+          } else if (track.kind === Track.Kind.Audio) {
+            setLivekitAudioTrack(track)
+            if (avatarAudioRef.current) {
+              track.attach(avatarAudioRef.current)
+              console.log("Track audio avatar attaché")
             }
           }
         })
@@ -107,11 +144,46 @@ export default function Exam() {
           if (track.kind === Track.Kind.Video) {
             track.detach()
             setLivekitVideoTrack(null)
+            console.log("Track vidéo avatar détaché")
+          } else if (track.kind === Track.Kind.Audio) {
+            track.detach()
+            setLivekitAudioTrack(null)
+            console.log("Track audio avatar détaché")
+          }
+        })
+
+        // Écouter quand un participant rejoint
+        room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
+          console.log(`Participant connecté: ${participant.identity}`, participant.name)
+          // Vérifier les tracks déjà publiés
+          participant.trackPublications.forEach((publication) => {
+            if (publication.track) {
+              console.log(`Track déjà publié: ${publication.track.kind}`, publication.track.source)
+            }
+          })
+        })
+
+        // Écouter quand des tracks sont publiés
+        room.on(RoomEvent.TrackPublished, (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+          if (participant.identity !== room.localParticipant?.identity) {
+            console.log(`Track publié par ${participant.identity}:`, publication.kind, publication.trackSource)
           }
         })
 
         room.on(RoomEvent.Connected, async () => {
           setLivekitConnected(true)
+          console.log("Connecté à LiveKit room:", livekitRoomName)
+          console.log("Participants dans la room:", room.remoteParticipants.size)
+          
+          // Vérifier les participants déjà présents
+          room.remoteParticipants.forEach((participant) => {
+            console.log(`Participant déjà présent: ${participant.identity}`, participant.name)
+            participant.trackPublications.forEach((publication) => {
+              if (publication.track) {
+                console.log(`Track existant: ${publication.track.kind}`, publication.track.source)
+              }
+            })
+          })
           
           // Activer la caméra et le micro de l'utilisateur
           try {
@@ -177,6 +249,12 @@ export default function Exam() {
         roomRef.current.disconnect()
         roomRef.current = null
       }
+      // Supprimer la room LiveKit quand on quitte la page
+      if (livekitRoomName) {
+        deleteLivekitRoom(livekitRoomName).catch((error) => {
+          console.error("Erreur lors de la suppression de la room LiveKit:", error)
+        })
+      }
     }
   }, [livekitToken, livekitRoomName, livekitWsUrl, cameraEnabled, microphoneEnabled])
 
@@ -189,6 +267,16 @@ export default function Exam() {
       }
     }
   }, [livekitVideoTrack])
+
+  // Attacher/détacher l'audio de l'avatar quand le track change
+  useEffect(() => {
+    if (livekitAudioTrack && avatarAudioRef.current) {
+      livekitAudioTrack.attach(avatarAudioRef.current)
+      return () => {
+        livekitAudioTrack.detach()
+      }
+    }
+  }, [livekitAudioTrack])
 
   // Attacher/détacher la vidéo locale de l'utilisateur
   useEffect(() => {
@@ -296,6 +384,21 @@ export default function Exam() {
       { role: "avatar", text: "L'examen est termine. Voici votre feedback detaille." },
     ])
     setIsLoading(true)
+    
+    // Déconnecter de LiveKit et supprimer la room avant de naviguer
+    if (roomRef.current) {
+      roomRef.current.disconnect()
+      roomRef.current = null
+    }
+    if (livekitRoomName) {
+      try {
+        await deleteLivekitRoom(livekitRoomName)
+        console.log("Room LiveKit supprimée avec succès")
+      } catch (error) {
+        console.error("Erreur lors de la suppression de la room LiveKit:", error)
+      }
+    }
+    
     try {
       await submitEvaluation({
         session_id: session!.id,
@@ -309,7 +412,7 @@ export default function Exam() {
       // Error submitting evaluation - navigate to results anyway
       navigate("/results")
     }
-  }, [session, elapsedTime, monologueDuration, selectedAvatar, setCurrentPhase, setDebatDuration, setFeedback, navigate])
+  }, [session, elapsedTime, monologueDuration, selectedAvatar, setCurrentPhase, setDebatDuration, setFeedback, navigate, livekitRoomName])
 
   // Toggle caméra
   const toggleCamera = useCallback(async () => {
@@ -443,6 +546,13 @@ export default function Exam() {
               <div className="grid grid-cols-2 gap-2 p-2 bg-slate-900 aspect-video">
                 {/* Vidéo Avatar Cléa */}
                 <div className="relative bg-slate-800 rounded-lg overflow-hidden">
+                  {/* Élément audio caché pour l'avatar */}
+                  <audio
+                    ref={avatarAudioRef}
+                    autoPlay
+                    playsInline
+                    className="hidden"
+                  />
                   {livekitVideoTrack ? (
                     <video
                       ref={avatarVideoRef}
@@ -457,7 +567,16 @@ export default function Exam() {
                           {selectedAvatar ? AVATAR_EMOJIS[selectedAvatar.id] : "👤"}
                         </div>
                         <p className="text-sm">{selectedAvatar?.name || "Avatar"}</p>
-                        <p className="text-xs text-slate-400 mt-1">En attente...</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {livekitConnected 
+                            ? "En attente de connexion de l'avatar à LiveKit..." 
+                            : "En attente..."}
+                        </p>
+                        {livekitConnected && (
+                          <p className="text-xs text-slate-500 mt-2">
+                            Vérifiez la console pour les logs de débogage
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
