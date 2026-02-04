@@ -28,6 +28,21 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
+    # Database - Neon PostgreSQL (using psycopg async driver)
+    DATABASE_URL: str = "postgresql+psycopg://neondb_owner:npg_d9ASaKywX1VE@ep-tiny-art-agr0j92a-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+
+    # JWT Configuration
+    JWT_SECRET_KEY: str = "evalora-secret-key-change-in-production-2024"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # OpenAI Configuration (for voice conversation)
+    OPENAI_API_KEY: Optional[str] = None
+
+    # ElevenLabs Configuration (optional - for custom voices)
+    ELEVENLABS_API_KEY: Optional[str] = None
+
     # LiveKit Configuration
     LIVEKIT_API_KEY: Optional[str] = None
     LIVEKIT_API_SECRET: Optional[str] = None
@@ -58,6 +73,22 @@ class Settings(BaseSettings):
         logger.info(f"Application     : {self.APP_NAME} v{self.APP_VERSION}")
         logger.info(f"Mode Debug      : {'Oui' if self.DEBUG else 'Non'}")
         logger.info(f"CORS Origins    : {', '.join(self.CORS_ORIGINS)}")
+        logger.info("-" * 60)
+
+        # Database
+        if self.DATABASE_URL:
+            # Masquer le mot de passe dans les logs
+            db_url = self.DATABASE_URL
+            if "@" in db_url:
+                parts = db_url.split("@")
+                prefix = parts[0].rsplit(":", 1)[0]
+                logger.info(f"Database        : CONFIGURE")
+                logger.info(f"  - Host        : {parts[1].split('/')[0]}")
+            else:
+                logger.info(f"Database        : CONFIGURE")
+        else:
+            logger.warning("Database        : NON CONFIGURE")
+
         logger.info("-" * 60)
 
         # LiveKit
@@ -95,6 +126,20 @@ class Settings(BaseSettings):
             logger.info(f"  - Retries     : max={self.TAVUS_MAX_RETRIES}, backoff={self.TAVUS_RETRY_BACKOFF}")
         else:
             logger.warning("Tavus           : NON CONFIGURE (mode texte)")
+
+        # OpenAI
+        if self.OPENAI_API_KEY:
+            logger.info(f"OpenAI          : CONFIGURE")
+            logger.info(f"  - API Key     : {self.OPENAI_API_KEY[:8]}...")
+        else:
+            logger.warning("OpenAI          : NON CONFIGURE (voice agent disabled)")
+
+        # ElevenLabs
+        if self.ELEVENLABS_API_KEY:
+            logger.info(f"ElevenLabs      : CONFIGURE")
+            logger.info(f"  - API Key     : {self.ELEVENLABS_API_KEY[:8]}...")
+        else:
+            logger.info("ElevenLabs      : NON CONFIGURE (using OpenAI TTS)")
 
         logger.info("=" * 60)
 

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react"
-import { Session, Avatar, Document, ExamPhase, Feedback } from "@/types"
+import { Session, Avatar, Document, ExamPhase, Feedback, TranscriptEntry } from "@/types"
 
 interface ExamContextType {
   session: Session | null
@@ -28,6 +28,8 @@ interface ExamContextType {
   setLivekitWsUrl: (url: string | null) => void
   tavusConversationUrl: string | null
   setTavusConversationUrl: (url: string | null) => void
+  conversationTranscript: TranscriptEntry[] | null
+  setConversationTranscript: (transcript: TranscriptEntry[] | null) => void
   resetExam: () => void
 }
 
@@ -47,6 +49,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
   const [livekitRoomName, setLivekitRoomName] = useState<string | null>(null)
   const [livekitWsUrl, setLivekitWsUrl] = useState<string | null>(null)
   const [tavusConversationUrl, setTavusConversationUrl] = useState<string | null>(null)
+  const [conversationTranscript, setConversationTranscript] = useState<TranscriptEntry[] | null>(null)
 
   const resetExam = () => {
     setSession(null)
@@ -62,6 +65,7 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     setLivekitRoomName(null)
     setLivekitWsUrl(null)
     setTavusConversationUrl(null)
+    setConversationTranscript(null)
   }
 
   return (
@@ -93,6 +97,8 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         setLivekitWsUrl,
         tavusConversationUrl,
         setTavusConversationUrl,
+        conversationTranscript,
+        setConversationTranscript,
         resetExam,
       }}
     >

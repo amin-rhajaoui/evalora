@@ -19,7 +19,9 @@ import {
   Briefcase,
   BookOpen,
   Globe,
-  Users
+  Users,
+  Info,
+  BookMarked
 } from "lucide-react"
 
 const THEME_ICONS: Record<string, React.ReactNode> = {
@@ -120,16 +122,35 @@ export default function DocumentSelect() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-400 to-pink-500 rounded-2xl mb-4 shadow-md">
+            <BookMarked className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold text-slate-800 mb-2">
             Choisissez votre document
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Ce document servira de support pour votre monologue et le debat
+          <p className="text-slate-600 mt-2 text-lg">
+            Sélectionnez un document qui vous intéresse
           </p>
+          
+          {/* Message d'aide */}
+          <Card className="mt-4 bg-blue-50/80 border-2 border-blue-200 max-w-2xl mx-auto">
+            <div className="p-4 flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+              <div className="text-left">
+                <p className="text-sm text-slate-700 font-medium mb-1">
+                  Comment ça fonctionne ?
+                </p>
+                <p className="text-xs text-slate-600">
+                  Vous allez présenter ce document pendant votre monologue, puis en discuter avec l'examinateur. 
+                  <strong className="text-slate-800"> Choisissez celui qui vous inspire le plus !</strong> Il n'y a pas de mauvais choix.
+                </p>
+              </div>
+            </div>
+          </Card>
         </div>
 
         {loading ? (
@@ -152,27 +173,30 @@ export default function DocumentSelect() {
 
             {/* Selected Document Preview */}
             {selectedDocument && (
-              <Card className="mb-8">
-                <CardHeader>
+              <Card className="mb-8 border-2 border-sky-300 bg-gradient-to-br from-white to-sky-50/30 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-sky-50 to-blue-50 border-b border-sky-200">
                   <div className="flex items-start justify-between">
                     <div>
-                      <Badge variant="outline" className="mb-2">
+                      <Badge variant="outline" className="mb-3 bg-sky-100 text-sky-700 border-sky-300">
                         {selectedDocument.theme}
                       </Badge>
-                      <CardTitle>{selectedDocument.title}</CardTitle>
-                      <CardDescription className="mt-1">
+                      <CardTitle className="text-slate-800 text-xl mb-2">{selectedDocument.title}</CardTitle>
+                      <CardDescription className="mt-1 text-slate-600">
                         {selectedDocument.source} | {selectedDocument.author} | {selectedDocument.date}
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-foreground leading-relaxed mb-4">
-                    {selectedDocument.text}
-                  </p>
+                <CardContent className="pt-6">
+                  <div className="bg-white/60 rounded-lg p-4 mb-4 border border-slate-200">
+                    <p className="text-foreground leading-relaxed text-base">
+                      {selectedDocument.text}
+                    </p>
+                  </div>
                   <div className="flex flex-wrap gap-2">
+                    <span className="text-xs text-slate-600 font-medium mr-2">Mots-clés :</span>
                     {selectedDocument.keywords.map((kw, i) => (
-                      <Badge key={i} variant="secondary">
+                      <Badge key={i} variant="secondary" className="bg-sky-100 text-sky-700 border-sky-200">
                         {kw}
                       </Badge>
                     ))}
@@ -182,27 +206,38 @@ export default function DocumentSelect() {
             )}
 
             {/* Start Button */}
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-4">
               <Button
                 size="xl"
                 onClick={handleStartExam}
                 disabled={!selectedDocument || starting}
-                className="min-w-[250px]"
+                className="min-w-[280px] bg-gradient-to-r from-sky-500 to-blue-500 hover:from-sky-600 hover:to-blue-600 text-white shadow-lg hover:shadow-xl transition-all text-base px-8 py-6 rounded-xl"
               >
                 {starting ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     {selectedAvatar
-                      ? "Preparation de l'avatar (1–2 min)..."
-                      : "Demarrage..."}
+                      ? "Préparation de l'avatar (1–2 min)..."
+                      : "Démarrage..."}
                   </>
                 ) : (
                   <>
-                    Commencer l'examen
+                    Commencer l'entraînement
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </>
                 )}
               </Button>
+              
+              {selectedDocument && !starting && (
+                <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 max-w-md">
+                  <div className="p-3 text-center">
+                    <p className="text-sm text-slate-700">
+                      <strong className="text-green-700">Excellent choix !</strong> 
+                      <span className="block mt-1 text-xs text-slate-600">Vous êtes prêt(e) à commencer. Respirez profondément, vous allez bien vous débrouiller ! 😊</span>
+                    </p>
+                  </div>
+                </Card>
+              )}
             </div>
           </>
         )}
@@ -228,32 +263,32 @@ function DocumentCard({
     <button
       onClick={onClick}
       className={cn(
-        "relative p-4 rounded-xl border-2 transition-all text-left w-full",
-        "hover:border-primary/50 hover:shadow-md",
+        "relative p-5 rounded-2xl border-2 transition-all text-left w-full",
+        "hover:border-sky-400 hover:shadow-lg hover:scale-[1.02]",
         isSelected
-          ? "border-primary bg-white ring-2 ring-primary/20 shadow-md"
+          ? "border-sky-500 bg-gradient-to-br from-sky-50 to-blue-50 ring-2 ring-sky-200 shadow-lg"
           : "border-slate-200 bg-white"
       )}
     >
       {isSelected && (
-        <div className="absolute top-3 right-3 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+        <div className="absolute top-3 right-3 w-7 h-7 bg-gradient-to-br from-sky-500 to-blue-500 rounded-full flex items-center justify-center shadow-sm">
           <Check className="w-4 h-4 text-white" />
         </div>
       )}
 
-      <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center text-white mb-3", bgColor)}>
+      <div className={cn("w-14 h-14 rounded-xl flex items-center justify-center text-white mb-4 shadow-sm", bgColor)}>
         {icon}
       </div>
 
-      <Badge variant="outline" className="mb-2 text-xs">
+      <Badge variant="outline" className="mb-3 text-xs bg-slate-100 text-slate-700 border-slate-300">
         {document.theme}
       </Badge>
 
-      <h3 className="font-semibold text-sm line-clamp-2 mb-1">
+      <h3 className="font-semibold text-base text-slate-800 line-clamp-2 mb-2 leading-snug">
         {document.title}
       </h3>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-slate-500">
         {document.source}
       </p>
     </button>

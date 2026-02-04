@@ -8,3 +8,12 @@ livekit-api>=1.0,<2
 python-jose[cryptography]==3.3.0
 aiofiles==24.1.0
 python-dotenv==1.0.0
+
+# Database
+sqlalchemy[asyncio]>=2.0.25
+psycopg[binary,pool]>=3.1.0
+alembic>=1.13.0
+
+# Authentication
+bcrypt>=4.0.0
+email-validator==2.1.0

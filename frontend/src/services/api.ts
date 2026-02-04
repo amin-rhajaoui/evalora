@@ -1,5 +1,5 @@
 import axios from "axios"
-import { Session, Avatar, Document, Feedback } from "@/types"
+import { Session, Avatar, Document, Feedback, TranscriptEntry } from "@/types"
 
 const api = axios.create({
   baseURL: "/api",
@@ -7,6 +7,63 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 })
+
+// Clés de stockage des tokens
+const TOKEN_KEY = 'evalora_access_token';
+const REFRESH_KEY = 'evalora_refresh_token';
+
+// Intercepteur pour ajouter le token JWT aux requêtes
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Intercepteur pour gérer les erreurs 401 et rafraîchir le token
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Si erreur 401 et pas déjà en retry
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem(REFRESH_KEY);
+        if (!refreshToken) {
+          throw new Error('No refresh token');
+        }
+
+        // Appel refresh sans intercepteur pour éviter boucle infinie
+        const response = await axios.post('/api/auth/refresh', {
+          refresh_token: refreshToken
+        });
+
+        const { access_token, refresh_token } = response.data;
+        localStorage.setItem(TOKEN_KEY, access_token);
+        localStorage.setItem(REFRESH_KEY, refresh_token);
+
+        // Réessayer la requête originale avec le nouveau token
+        originalRequest.headers.Authorization = `Bearer ${access_token}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Échec du refresh: déconnecter l'utilisateur
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(REFRESH_KEY);
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+)
 
 export async function createSession(data: {
   student_name: string
@@ -156,6 +213,26 @@ export async function createTavusConversation(data: {
   message: string
 }> {
   const response = await api.post("/tavus/conversation", data)
+  return response.data
+}
+
+// Voice Agent / Transcription API
+export async function getVoiceAgentStatus(): Promise<{
+  configured: boolean
+  openai_configured: boolean
+  livekit_configured: boolean
+  message: string
+}> {
+  const response = await api.get("/voice-agent/status")
+  return response.data
+}
+
+export async function getTranscription(sessionId: string): Promise<{
+  session_id: string
+  transcript: TranscriptEntry[]
+  created_at: string
+}> {
+  const response = await api.get(`/voice-agent/transcription/${sessionId}`)
   return response.data
 }
 

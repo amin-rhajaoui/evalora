@@ -80,6 +80,19 @@ export interface Feedback {
   total_duration: string;
 }
 
+// Types pour la transcription de conversation vocale
+export interface TranscriptEntry {
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp?: string;
+}
+
+export interface Transcription {
+  session_id: string;
+  transcript: TranscriptEntry[];
+  created_at: string;
+}
+
 // Configuration du timer
 export interface TimerPhase {
   name: string;
