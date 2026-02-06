@@ -13,7 +13,6 @@ import {
   Clock,
   RotateCcw,
   CheckCircle2,
-  AlertCircle,
   Star,
   Heart,
   Sparkles,

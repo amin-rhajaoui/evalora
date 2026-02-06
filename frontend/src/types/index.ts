@@ -1,6 +1,6 @@
 // Types pour Evalora
 
-export type ExamPhase = 'consignes' | 'monologue' | 'debat' | 'feedback' | 'completed';
+export type ExamPhase = 'consignes' | 'monologue' | 'debat' | 'results';
 
 export type StudentLevel = 'A2+' | 'B1';
 
@@ -93,40 +93,3 @@ export interface Transcription {
   created_at: string;
 }
 
-// Configuration du timer
-export interface TimerPhase {
-  name: string;
-  color: string;
-  duration?: number;
-  warning_at?: number;
-  warning_color?: string;
-  end_color?: string;
-}
-
-export const TIMER_PHASES: Record<ExamPhase, TimerPhase> = {
-  consignes: {
-    name: 'CONSIGNES',
-    color: '#87CEEB',
-  },
-  monologue: {
-    name: 'MONOLOGUE',
-    color: '#4CAF50',
-    duration: 600,
-    warning_at: 480,
-    warning_color: '#FFC107',
-    end_color: '#F44336',
-  },
-  debat: {
-    name: 'DEBAT',
-    color: '#9C27B0',
-    duration: 600,
-  },
-  feedback: {
-    name: 'FEEDBACK',
-    color: '#FFFFFF',
-  },
-  completed: {
-    name: 'TERMINE',
-    color: '#4CAF50',
-  },
-};

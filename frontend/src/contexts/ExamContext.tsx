@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react"
-import { Session, Avatar, Document, ExamPhase, Feedback, TranscriptEntry } from "@/types"
+import { Session, Avatar, Document, Feedback, TranscriptEntry } from "@/types"
 
 interface ExamContextType {
   session: Session | null
@@ -12,12 +12,6 @@ interface ExamContextType {
   setSelectedAvatar: (avatar: Avatar | null) => void
   selectedDocument: Document | null
   setSelectedDocument: (doc: Document | null) => void
-  currentPhase: ExamPhase
-  setCurrentPhase: (phase: ExamPhase) => void
-  monologueDuration: number
-  setMonologueDuration: (duration: number) => void
-  debatDuration: number
-  setDebatDuration: (duration: number) => void
   feedback: Feedback | null
   setFeedback: (feedback: Feedback | null) => void
   livekitToken: string | null
@@ -26,8 +20,6 @@ interface ExamContextType {
   setLivekitRoomName: (name: string | null) => void
   livekitWsUrl: string | null
   setLivekitWsUrl: (url: string | null) => void
-  tavusConversationUrl: string | null
-  setTavusConversationUrl: (url: string | null) => void
   conversationTranscript: TranscriptEntry[] | null
   setConversationTranscript: (transcript: TranscriptEntry[] | null) => void
   resetExam: () => void
@@ -41,14 +33,10 @@ export function ExamProvider({ children }: { children: ReactNode }) {
   const [studentLevel, setStudentLevel] = useState<"A2+" | "B1">("B1")
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
-  const [currentPhase, setCurrentPhase] = useState<ExamPhase>("consignes")
-  const [monologueDuration, setMonologueDuration] = useState(0)
-  const [debatDuration, setDebatDuration] = useState(0)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [livekitToken, setLivekitToken] = useState<string | null>(null)
   const [livekitRoomName, setLivekitRoomName] = useState<string | null>(null)
   const [livekitWsUrl, setLivekitWsUrl] = useState<string | null>(null)
-  const [tavusConversationUrl, setTavusConversationUrl] = useState<string | null>(null)
   const [conversationTranscript, setConversationTranscript] = useState<TranscriptEntry[] | null>(null)
 
   const resetExam = () => {
@@ -57,14 +45,10 @@ export function ExamProvider({ children }: { children: ReactNode }) {
     setStudentLevel("B1")
     setSelectedAvatar(null)
     setSelectedDocument(null)
-    setCurrentPhase("consignes")
-    setMonologueDuration(0)
-    setDebatDuration(0)
     setFeedback(null)
     setLivekitToken(null)
     setLivekitRoomName(null)
     setLivekitWsUrl(null)
-    setTavusConversationUrl(null)
     setConversationTranscript(null)
   }
 
@@ -81,12 +65,6 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         setSelectedAvatar,
         selectedDocument,
         setSelectedDocument,
-        currentPhase,
-        setCurrentPhase,
-        monologueDuration,
-        setMonologueDuration,
-        debatDuration,
-        setDebatDuration,
         feedback,
         setFeedback,
         livekitToken,
@@ -95,8 +73,6 @@ export function ExamProvider({ children }: { children: ReactNode }) {
         setLivekitRoomName,
         livekitWsUrl,
         setLivekitWsUrl,
-        tavusConversationUrl,
-        setTavusConversationUrl,
         conversationTranscript,
         setConversationTranscript,
         resetExam,

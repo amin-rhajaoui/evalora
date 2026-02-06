@@ -70,7 +70,7 @@ class SessionResponse(BaseModel):
 
 
 class PhaseTransition(BaseModel):
-    """Transition entre phases"""
-    session_id: str
+    """Transition entre phases (session_id optionnel si fourni dans le path)"""
+    session_id: Optional[str] = None
     new_phase: ExamPhase
     phase_duration: Optional[int] = None  # Durée de la phase précédente

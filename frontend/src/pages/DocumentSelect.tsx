@@ -58,7 +58,6 @@ export default function DocumentSelect() {
     setLivekitToken,
     setLivekitRoomName,
     setLivekitWsUrl,
-    setTavusConversationUrl,
   } = useExam()
 
   const [documents, setDocuments] = useState<Document[]>([])
@@ -96,11 +95,6 @@ export default function DocumentSelect() {
         document_id: selectedDocument.id,
       })
       setSession(session)
-
-      // Récupérer l'URL de conversation Tavus si disponible
-      if (session.tavus_conversation_url) {
-        setTavusConversationUrl(session.tavus_conversation_url)
-      }
 
       try {
         const roomRes = await createLivekitRoom(session.id)

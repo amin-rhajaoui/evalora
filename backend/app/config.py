@@ -148,6 +148,8 @@ settings = Settings()
 
 
 # Configuration des avatars
+# Champs optionnels ElevenLabs (elevenlabs_voice_id, stability, similarity_boost, etc.)
+# pour Phase 1 TTS : Cléa→Charlotte, Alex→Antoine, Karim→Pierre, Claire→Jacqueline (noms voix cahier des charges)
 AVATARS = {
     "clea": {
         "id": "clea",
@@ -159,9 +161,14 @@ AVATARS = {
         "role": "Met à l'aise l'étudiant, crée un climat de confiance.",
         "behavior": "Sourit souvent, parle calmement, valorise les efforts, reformule pour aider.",
         "feedback_tone": "Chaleureux, empathique et motivant.",
-        "tavus_replica_id": "r9fa0878977a",  # "Olivia - Office" - Corrigé: il y avait un 7 manquant
-        "tavus_persona_id": "p0bd677850df",  # À remplacer par le persona_id réel
-        "placeholder_image": "/assets/avatars/clea.png"
+        "tavus_replica_id": None,  # Desactive pour utiliser LiveKit + Agent
+        "tavus_persona_id": None,
+        "placeholder_image": "/assets/avatars/clea.png",
+        "elevenlabs_voice_id": "8qnuneLiGjGrT4A62CCe",
+        "elevenlabs_stability": 0.5,
+        "elevenlabs_similarity_boost": 0.75,
+        "elevenlabs_style_exaggeration": None,
+        "elevenlabs_speaker_boost": True,
     },
     "alex": {
         "id": "alex",
@@ -174,7 +181,12 @@ AVATARS = {
         "behavior": "Langage familier mais correct. Attitude très amicale.",
         "feedback_tone": "Positif et encourageant.",
         "tavus_replica_id": None,
-        "placeholder_image": "/assets/avatars/alex.png"
+        "placeholder_image": "/assets/avatars/alex.png",
+        "elevenlabs_voice_id": None,  # ex. voix "Antoine"
+        "elevenlabs_stability": 0.5,
+        "elevenlabs_similarity_boost": 0.75,
+        "elevenlabs_style_exaggeration": None,
+        "elevenlabs_speaker_boost": True,
     },
     "karim": {
         "id": "karim",
@@ -187,7 +199,12 @@ AVATARS = {
         "behavior": "Structure les consignes clairement, parle lentement, garde une distance bienveillante.",
         "feedback_tone": "Neutre et analytique.",
         "tavus_replica_id": None,
-        "placeholder_image": "/assets/avatars/karim.png"
+        "placeholder_image": "/assets/avatars/karim.png",
+        "elevenlabs_voice_id": None,  # ex. voix "Pierre"
+        "elevenlabs_stability": 0.6,
+        "elevenlabs_similarity_boost": 0.75,
+        "elevenlabs_style_exaggeration": None,
+        "elevenlabs_speaker_boost": True,
     },
     "claire": {
         "id": "claire",
@@ -200,7 +217,12 @@ AVATARS = {
         "behavior": "Peu de sourires, ton direct, reformule si nécessaire, exige des réponses complètes.",
         "feedback_tone": "Exigeant mais constructif.",
         "tavus_replica_id": None,
-        "placeholder_image": "/assets/avatars/claire.png"
+        "placeholder_image": "/assets/avatars/claire.png",
+        "elevenlabs_voice_id": None,  # ex. voix "Jacqueline"
+        "elevenlabs_stability": 0.6,
+        "elevenlabs_similarity_boost": 0.75,
+        "elevenlabs_style_exaggeration": None,
+        "elevenlabs_speaker_boost": True,
     }
 }
 
@@ -208,8 +230,8 @@ AVATARS = {
 # Configuration des phases du timer
 TIMER_PHASES = {
     "consignes": {
-        "name": "CONSIGNES",
-        "color": "#87CEEB",
+        "name": "PHASE : CONSIGNES",
+        "color": "#ADD8E6",  # bleu clair spec
         "duration": None,
         "description": "Phase d'écoute et préparation"
     },

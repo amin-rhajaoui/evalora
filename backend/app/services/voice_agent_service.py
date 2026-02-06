@@ -1,10 +1,15 @@
 """
-Service pour gérer les transcriptions des conversations vocales avec l'agent
+Service pour gérer les transcriptions des conversations vocales avec l'agent (persistance BDD)
 """
-from typing import Dict, List, Optional
+from typing import List, Optional
 from datetime import datetime
+
 from pydantic import BaseModel
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from ..config import logger
+from ..db.models import TranscriptionEntry as TranscriptionEntryModel
 
 
 class TranscriptEntry(BaseModel):
@@ -22,84 +27,107 @@ class Transcription(BaseModel):
     created_at: str
 
 
-# Stockage en mémoire des transcriptions (à remplacer par une BDD en production)
-transcriptions: Dict[str, Transcription] = {}
-
-
 class VoiceAgentService:
-    """Service de gestion des transcriptions de l'agent vocal"""
+    """Service de gestion des transcriptions de l'agent vocal (base de données)"""
 
     @staticmethod
-    def save_transcription(
+    async def save_transcription(
+        db: AsyncSession,
         session_id: str,
         room_name: str,
         transcript: List[dict]
     ) -> Transcription:
         """
-        Sauvegarde une transcription de conversation.
-
-        Args:
-            session_id: ID de la session d'examen
-            room_name: Nom de la room LiveKit
-            transcript: Liste des entrées de transcription
-
-        Returns:
-            Transcription sauvegardée
+        Sauvegarde une transcription (remplace les entrées existantes pour cette session).
         """
-        entries = [TranscriptEntry(**entry) for entry in transcript]
-
-        transcription = Transcription(
+        await VoiceAgentService.delete_transcription(db, session_id)
+        entries = [TranscriptEntry(**e) for e in transcript]
+        created_at = datetime.utcnow().isoformat()
+        for e in entries:
+            row = TranscriptionEntryModel(
+                session_id=session_id,
+                room_name=room_name,
+                role=e.role,
+                text=e.text,
+                timestamp=e.timestamp,
+            )
+            db.add(row)
+        await db.commit()
+        logger.info(f"Transcription saved for session {session_id}: {len(entries)} entries")
+        return Transcription(
             session_id=session_id,
             room_name=room_name,
             transcript=entries,
-            created_at=datetime.utcnow().isoformat()
+            created_at=created_at,
         )
 
-        transcriptions[session_id] = transcription
-        logger.info(f"Transcription saved for session {session_id}: {len(entries)} entries")
-
-        return transcription
+    @staticmethod
+    async def append_entry(
+        db: AsyncSession,
+        session_id: str,
+        room_name: str,
+        entry: dict
+    ) -> Transcription:
+        """
+        Ajoute une entrée en temps réel (pendant l'appel). Crée la transcription si besoin.
+        """
+        parsed = TranscriptEntry(**entry)
+        row = TranscriptionEntryModel(
+            session_id=session_id,
+            room_name=room_name,
+            role=parsed.role,
+            text=parsed.text,
+            timestamp=parsed.timestamp,
+        )
+        db.add(row)
+        await db.commit()
+        logger.info(f"Transcription append for session {session_id}: {parsed.role}")
+        return await VoiceAgentService.get_transcription(db, session_id) or Transcription(
+            session_id=session_id,
+            room_name=room_name,
+            transcript=[parsed],
+            created_at=datetime.utcnow().isoformat(),
+        )
 
     @staticmethod
-    def get_transcription(session_id: str) -> Optional[Transcription]:
-        """
-        Récupère une transcription par session_id.
-
-        Args:
-            session_id: ID de la session d'examen
-
-        Returns:
-            Transcription si trouvée, None sinon
-        """
-        return transcriptions.get(session_id)
-
-    @staticmethod
-    def delete_transcription(session_id: str) -> bool:
-        """
-        Supprime une transcription.
-
-        Args:
-            session_id: ID de la session d'examen
-
-        Returns:
-            True si supprimée, False si non trouvée
-        """
-        if session_id in transcriptions:
-            del transcriptions[session_id]
-            logger.info(f"Transcription deleted for session {session_id}")
-            return True
-        return False
+    async def get_transcription(db: AsyncSession, session_id: str) -> Optional[Transcription]:
+        """Récupère la transcription par session_id (ordre chronologique)."""
+        result = await db.execute(
+            select(TranscriptionEntryModel)
+            .where(TranscriptionEntryModel.session_id == session_id)
+            .order_by(TranscriptionEntryModel.created_at)
+        )
+        rows = result.scalars().all()
+        if not rows:
+            return None
+        first = rows[0]
+        return Transcription(
+            session_id=first.session_id,
+            room_name=first.room_name,
+            transcript=[
+                TranscriptEntry(role=r.role, text=r.text, timestamp=r.timestamp)
+                for r in rows
+            ],
+            created_at=first.created_at.isoformat() if first.created_at else datetime.utcnow().isoformat(),
+        )
 
     @staticmethod
-    def list_transcriptions() -> List[str]:
-        """
-        Liste tous les session_ids avec des transcriptions.
+    async def delete_transcription(db: AsyncSession, session_id: str) -> bool:
+        """Supprime toutes les entrées de transcription pour cette session."""
+        result = await db.execute(delete(TranscriptionEntryModel).where(TranscriptionEntryModel.session_id == session_id))
+        await db.commit()
+        deleted = result.rowcount
+        if deleted:
+            logger.info(f"Transcription deleted for session {session_id}: {deleted} entries")
+        return deleted > 0
 
-        Returns:
-            Liste des session_ids
-        """
-        return list(transcriptions.keys())
+    @staticmethod
+    async def list_transcriptions(db: AsyncSession) -> List[str]:
+        """Liste les session_id ayant au moins une entrée."""
+        result = await db.execute(
+            select(TranscriptionEntryModel.session_id).distinct()
+        )
+        return [r[0] for r in result.all()]
 
 
-# Instance singleton du service
 voice_agent_service = VoiceAgentService()
