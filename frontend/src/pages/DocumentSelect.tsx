@@ -108,7 +108,7 @@ export default function DocumentSelect() {
         // LiveKit non configuré ou erreur - mode simulation, on continue
       }
 
-      navigate("/exam")
+      navigate("/system-check")
     } catch {
       // Error creating session
       setStarting(false)

@@ -23,10 +23,10 @@ export default function Welcome() {
   return (
     <div className="min-h-screen gradient-hero flex flex-col">
       {/* Header avec info utilisateur */}
-      <header className="absolute top-0 right-0 p-4 flex items-center gap-3">
+      <header className="w-full px-6 py-4 flex items-center justify-end gap-3">
         {user && (
           <>
-            <div className="flex items-center gap-2 text-sm text-slate-600 bg-white/80 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-slate-600 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm">
               <User className="w-4 h-4" />
               <span>{user.full_name}</span>
             </div>
@@ -34,7 +34,7 @@ export default function Welcome() {
               variant="outline"
               size="sm"
               onClick={handleLogout}
-              className="bg-white/80 hover:bg-white"
+              className="bg-white/80 hover:bg-white shadow-sm"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Deconnexion

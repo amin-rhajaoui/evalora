@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings, logger
-from .routers import session, documents, avatar, livekit, evaluation, tavus, auth, voice_agent
+from .routers import session, documents, avatar, livekit, evaluation, auth, voice_agent
 from .db.database import engine
 from .db.models import Base
 
@@ -60,7 +60,6 @@ app.include_router(documents.router, prefix="/api/documents", tags=["Documents"]
 app.include_router(avatar.router, prefix="/api/avatar", tags=["Avatar"])
 app.include_router(livekit.router, prefix="/api/livekit", tags=["LiveKit"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["Evaluation"])
-app.include_router(tavus.router, prefix="/api/tavus", tags=["Tavus"])
 app.include_router(voice_agent.router, prefix="/api/voice-agent", tags=["Voice Agent"])
 
 
@@ -79,8 +78,6 @@ async def root():
 async def health_check():
     """Vérification de santé"""
     livekit_ok = bool(settings.LIVEKIT_API_KEY and settings.LIVEKIT_API_SECRET)
-    tavus_ok = bool(settings.TAVUS_API_KEY)
-
     openai_ok = bool(settings.OPENAI_API_KEY)
 
     return {
@@ -89,10 +86,6 @@ async def health_check():
             "livekit": {
                 "configured": livekit_ok,
                 "url": settings.LIVEKIT_URL if livekit_ok else None
-            },
-            "tavus": {
-                "configured": tavus_ok,
-                "url": settings.TAVUS_BASE_URL if tavus_ok else None
             },
             "voice_agent": {
                 "configured": openai_ok and livekit_ok,

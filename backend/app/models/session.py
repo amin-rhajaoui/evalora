@@ -31,28 +31,6 @@ class SessionCreate(BaseModel):
     document_id: Optional[str] = Field(default=None, description="ID du document choisi")
 
 
-class Session(BaseModel):
-    """Session d'examen complète"""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    student_name: str
-    level: StudentLevel
-    avatar_id: Optional[str] = None
-    document_id: Optional[str] = None
-    current_phase: ExamPhase = ExamPhase.CONSIGNES
-    phase_start_time: Optional[datetime] = None
-    monologue_duration: Optional[int] = None  # en secondes
-    debat_duration: Optional[int] = None
-    created_at: datetime = Field(default_factory=datetime.now)
-
-    # LiveKit
-    livekit_room_name: Optional[str] = None
-    livekit_token: Optional[str] = None
-    
-    # Tavus
-    tavus_conversation_id: Optional[str] = None
-    tavus_conversation_url: Optional[str] = None
-
-
 class SessionResponse(BaseModel):
     """Réponse API pour une session"""
     id: str
@@ -64,13 +42,11 @@ class SessionResponse(BaseModel):
     current_phase: ExamPhase
     livekit_token: Optional[str] = None
     livekit_url: Optional[str] = None
-    tavus_conversation_id: Optional[str] = None
-    tavus_conversation_url: Optional[str] = None
     created_at: datetime
 
 
 class PhaseTransition(BaseModel):
-    """Transition entre phases (session_id optionnel si fourni dans le path)"""
+    """Transition entre phases"""
     session_id: Optional[str] = None
     new_phase: ExamPhase
-    phase_duration: Optional[int] = None  # Durée de la phase précédente
+    phase_duration: Optional[int] = None

@@ -193,7 +193,10 @@ export default function Setup() {
                   <Button
                     variant={noAvatar ? "default" : "outline"}
                     onClick={handleNoAvatar}
-                    className="flex-1"
+                    className={cn(
+                      "flex-1",
+                      !noAvatar && "bg-slate-50 border-2 border-slate-300 hover:bg-slate-100 hover:border-sky-400 text-slate-700"
+                    )}
                   >
                     <UserX className="w-4 h-4 mr-2" />
                     Sans avatar
@@ -201,7 +204,7 @@ export default function Setup() {
                   <Button
                     variant="outline"
                     onClick={handleRandomAvatar}
-                    className="flex-1"
+                    className="flex-1 bg-slate-50 border-2 border-slate-300 hover:bg-slate-100 hover:border-sky-400 text-slate-700"
                   >
                     <Shuffle className="w-4 h-4 mr-2" />
                     Aleatoire

@@ -1,6 +1,6 @@
 // Types pour Evalora
 
-export type ExamPhase = 'consignes' | 'monologue' | 'debat' | 'results';
+export type ExamPhase = 'consignes' | 'monologue' | 'debat' | 'feedback' | 'results';
 
 export type StudentLevel = 'A2+' | 'B1';
 
@@ -15,7 +15,6 @@ export interface Avatar {
   behavior?: string;
   feedback_tone: string;
   placeholder_image: string;
-  tavus_configured?: boolean;
 }
 
 export interface Document {
@@ -41,7 +40,6 @@ export interface Session {
   current_phase: ExamPhase;
   livekit_token?: string;
   livekit_url?: string;
-  tavus_conversation_url?: string;
   created_at: string;
 }
 
@@ -85,6 +83,7 @@ export interface TranscriptEntry {
   role: 'user' | 'assistant';
   text: string;
   timestamp?: string;
+  phase?: string; // consignes | monologue | debat
 }
 
 export interface Transcription {

@@ -193,29 +193,6 @@ export async function getFeedback(
   return response.data
 }
 
-export async function getTavusStatus(): Promise<{
-  configured: boolean
-  base_url?: string
-}> {
-  const response = await api.get("/tavus/status")
-  return response.data
-}
-
-export async function createTavusConversation(data: {
-  session_id: string
-  avatar_id: string
-  conversation_name?: string
-  callback_url?: string
-}): Promise<{
-  conversation_id: string | null
-  conversation_url: string | null
-  status: string
-  message: string
-}> {
-  const response = await api.post("/tavus/conversation", data)
-  return response.data
-}
-
 // Voice Agent / Transcription API
 export async function getVoiceAgentStatus(): Promise<{
   configured: boolean

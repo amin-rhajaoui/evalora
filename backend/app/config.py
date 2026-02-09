@@ -48,19 +48,6 @@ class Settings(BaseSettings):
     LIVEKIT_API_SECRET: Optional[str] = None
     LIVEKIT_URL: str = "wss://your-livekit-server.livekit.cloud"
 
-    # Tavus Configuration
-    TAVUS_API_KEY: Optional[str] = None
-    # Essayer d'abord api.tavus.io, sinon tavusapi.com selon la doc
-    TAVUS_BASE_URL: str = "https://api.tavus.io/v2"
-    
-    # Tavus Network Configuration (optional)
-    TAVUS_HTTP_PROXY: Optional[str] = None
-    TAVUS_HTTPS_PROXY: Optional[str] = None
-    TAVUS_CONNECT_TIMEOUT: float = 10.0
-    TAVUS_READ_TIMEOUT: float = 30.0
-    TAVUS_MAX_RETRIES: int = 3
-    TAVUS_RETRY_BACKOFF: float = 1.5
-
     class Config:
         env_file = ".env"
         extra = "allow"
@@ -99,34 +86,6 @@ class Settings(BaseSettings):
         else:
             logger.warning("LiveKit         : NON CONFIGURE (mode simulation)")
 
-        # Tavus
-        if self.TAVUS_API_KEY:
-            logger.info(f"Tavus           : CONFIGURE")
-            logger.info(f"  - Base URL    : {self.TAVUS_BASE_URL}")
-            logger.info(f"  - API Key     : {self.TAVUS_API_KEY[:8]}...")
-            if self.TAVUS_HTTP_PROXY or self.TAVUS_HTTPS_PROXY:
-                proxy_info = []
-                if self.TAVUS_HTTP_PROXY:
-                    # Masquer les credentials dans les logs
-                    proxy_url = self.TAVUS_HTTP_PROXY
-                    if "@" in proxy_url:
-                        parts = proxy_url.split("@")
-                        proxy_info.append(f"HTTP: {parts[0].split('://')[0]}://***@{parts[1]}")
-                    else:
-                        proxy_info.append(f"HTTP: {proxy_url}")
-                if self.TAVUS_HTTPS_PROXY:
-                    proxy_url = self.TAVUS_HTTPS_PROXY
-                    if "@" in proxy_url:
-                        parts = proxy_url.split("@")
-                        proxy_info.append(f"HTTPS: {parts[0].split('://')[0]}://***@{parts[1]}")
-                    else:
-                        proxy_info.append(f"HTTPS: {proxy_url}")
-                logger.info(f"  - Proxy       : {', '.join(proxy_info)}")
-            logger.info(f"  - Timeouts    : connect={self.TAVUS_CONNECT_TIMEOUT}s, read={self.TAVUS_READ_TIMEOUT}s")
-            logger.info(f"  - Retries     : max={self.TAVUS_MAX_RETRIES}, backoff={self.TAVUS_RETRY_BACKOFF}")
-        else:
-            logger.warning("Tavus           : NON CONFIGURE (mode texte)")
-
         # OpenAI
         if self.OPENAI_API_KEY:
             logger.info(f"OpenAI          : CONFIGURE")
@@ -161,8 +120,6 @@ AVATARS = {
         "role": "Met à l'aise l'étudiant, crée un climat de confiance.",
         "behavior": "Sourit souvent, parle calmement, valorise les efforts, reformule pour aider.",
         "feedback_tone": "Chaleureux, empathique et motivant.",
-        "tavus_replica_id": None,  # Desactive pour utiliser LiveKit + Agent
-        "tavus_persona_id": None,
         "placeholder_image": "/assets/avatars/clea.png",
         "elevenlabs_voice_id": "8qnuneLiGjGrT4A62CCe",
         "elevenlabs_stability": 0.5,
@@ -180,9 +137,8 @@ AVATARS = {
         "role": "Rassure, motive, détend l'ambiance pour réduire le stress.",
         "behavior": "Langage familier mais correct. Attitude très amicale.",
         "feedback_tone": "Positif et encourageant.",
-        "tavus_replica_id": None,
         "placeholder_image": "/assets/avatars/alex.png",
-        "elevenlabs_voice_id": None,  # ex. voix "Antoine"
+        "elevenlabs_voice_id": "IKne3meq5aSn9XLyUdCD",  # voix "Antoine" (jeune homme français)
         "elevenlabs_stability": 0.5,
         "elevenlabs_similarity_boost": 0.75,
         "elevenlabs_style_exaggeration": None,
@@ -198,9 +154,8 @@ AVATARS = {
         "role": "Garant du cadre formel de l'examen DU. Donne un retour équilibré.",
         "behavior": "Structure les consignes clairement, parle lentement, garde une distance bienveillante.",
         "feedback_tone": "Neutre et analytique.",
-        "tavus_replica_id": None,
         "placeholder_image": "/assets/avatars/karim.png",
-        "elevenlabs_voice_id": None,  # ex. voix "Pierre"
+        "elevenlabs_voice_id": "zcAOhNBS3c14rBihAFp1",  # voix "Guillaume" (homme mature français)
         "elevenlabs_stability": 0.6,
         "elevenlabs_similarity_boost": 0.75,
         "elevenlabs_style_exaggeration": None,
@@ -216,9 +171,8 @@ AVATARS = {
         "role": "Fait respecter le cadre académique strict. Exigence linguistique élevée.",
         "behavior": "Peu de sourires, ton direct, reformule si nécessaire, exige des réponses complètes.",
         "feedback_tone": "Exigeant mais constructif.",
-        "tavus_replica_id": None,
         "placeholder_image": "/assets/avatars/claire.png",
-        "elevenlabs_voice_id": None,  # ex. voix "Jacqueline"
+        "elevenlabs_voice_id": "XB0fDUnXU5powFXDhCwa",  # voix "Charlotte" (femme autoritaire française)
         "elevenlabs_stability": 0.6,
         "elevenlabs_similarity_boost": 0.75,
         "elevenlabs_style_exaggeration": None,

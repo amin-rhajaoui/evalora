@@ -1,6 +1,7 @@
 # LiveKit Agents with OpenAI and ElevenLabs plugins
 # Requires Python >= 3.10, < 3.14
-livekit-agents[openai,silero]~=1.0
+livekit-agents[silero,turn-detector]~=1.3
+livekit-plugins-openai~=1.3
 livekit-plugins-elevenlabs~=1.3
 python-dotenv>=1.0.0
 httpx>=0.27.0

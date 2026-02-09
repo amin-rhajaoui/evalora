@@ -17,6 +17,7 @@ class TranscriptEntry(BaseModel):
     role: str  # "user" ou "assistant"
     text: str
     timestamp: Optional[str] = None
+    phase: Optional[str] = None  # consignes | monologue | debat
 
 
 class Transcription(BaseModel):
@@ -50,6 +51,7 @@ class VoiceAgentService:
                 role=e.role,
                 text=e.text,
                 timestamp=e.timestamp,
+                phase=e.phase,
             )
             db.add(row)
         await db.commit()
@@ -78,6 +80,7 @@ class VoiceAgentService:
             role=parsed.role,
             text=parsed.text,
             timestamp=parsed.timestamp,
+            phase=parsed.phase,
         )
         db.add(row)
         await db.commit()
@@ -105,7 +108,7 @@ class VoiceAgentService:
             session_id=first.session_id,
             room_name=first.room_name,
             transcript=[
-                TranscriptEntry(role=r.role, text=r.text, timestamp=r.timestamp)
+                TranscriptEntry(role=r.role, text=r.text, timestamp=r.timestamp, phase=r.phase)
                 for r in rows
             ],
             created_at=first.created_at.isoformat() if first.created_at else datetime.utcnow().isoformat(),

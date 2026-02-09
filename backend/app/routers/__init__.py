@@ -1,1 +1,1 @@
-from . import session, documents, avatar, livekit, evaluation, tavus, auth, voice_agent
+from . import session, documents, avatar, livekit, evaluation, auth, voice_agent
