@@ -37,7 +37,7 @@ const STATE_CONFIG: Record<
   }
 > = {
   listening: {
-    label: "L'examinateur vous ecoute",
+    label: "L'examinateur vous écoute",
     dotClass: "bg-blue-500 animate-pulse",
     borderClass: "border-blue-200",
     bgClass: "bg-blue-50/90",
@@ -51,7 +51,7 @@ const STATE_CONFIG: Record<
     textClass: "text-green-700",
   },
   thinking: {
-    label: "L'examinateur reflechit...",
+    label: "L'examinateur réfléchit…",
     dotClass: "bg-yellow-500 animate-pulse",
     borderClass: "border-yellow-200",
     bgClass: "bg-yellow-50/90",

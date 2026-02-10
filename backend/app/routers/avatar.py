@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional
 
-from ..config import AVATARS, settings
+from ..config import AVATARS
 
 router = APIRouter()
 
@@ -115,7 +115,6 @@ async def get_avatar(avatar_id: str):
         "behavior": avatar["behavior"],
         "feedback_tone": avatar["feedback_tone"],
         "placeholder_image": avatar["placeholder_image"],
-        "tavus_configured": settings.TAVUS_API_KEY is not None
     }
     # Config ElevenLabs (optionnelle) pour l'agent TTS
     if avatar.get("elevenlabs_voice_id") is not None:

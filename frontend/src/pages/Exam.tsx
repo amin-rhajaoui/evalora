@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn, formatTime } from "@/lib/utils"
-import { Mic, MicOff, Phone, Loader2, CheckCircle, Flag, Headphones, Volume2 } from "lucide-react"
+import { Mic, MicOff, Phone, Loader2, CheckCircle, Flag, Headphones, Volume2, SkipForward } from "lucide-react"
 import { ExamPhase } from "@/types"
 import {
   Room,
@@ -324,6 +324,20 @@ export default function Exam() {
     }
   }, [])
 
+  // Skip consignes
+  const handleSkipConsignes = useCallback(async () => {
+    if (!roomRef.current) return
+    try {
+      const payload = JSON.stringify({ event: "skip_consignes" })
+      await roomRef.current.localParticipant?.publishData(
+        new TextEncoder().encode(payload),
+        { topic: "exam" }
+      )
+    } catch (error) {
+      console.error("Error sending skip_consignes event:", error)
+    }
+  }, [])
+
   // Monologue timer ended
   const monologueTimerEndedRef = useRef(false)
   useEffect(() => {
@@ -383,56 +397,62 @@ export default function Exam() {
       case "speaking":
         return { color: "bg-green-500", pulse: false, text: "L'examinateur parle", icon: <Volume2 className="w-4 h-4" /> }
       case "thinking":
-        return { color: "bg-yellow-500", pulse: true, text: "L'examinateur reflechit...", icon: <Loader2 className="w-4 h-4 animate-spin" /> }
+        return { color: "bg-yellow-500", pulse: true, text: "L'examinateur réfléchit…", icon: <Loader2 className="w-4 h-4 animate-spin" /> }
       case "connecting":
-        return { color: "bg-gray-400", pulse: true, text: "Connexion en cours...", icon: <Loader2 className="w-4 h-4 animate-spin" /> }
+        return { color: "bg-gray-400", pulse: true, text: "Connexion en cours…", icon: <Loader2 className="w-4 h-4 animate-spin" /> }
       case "listening":
       default:
-        return { color: "bg-blue-500", pulse: true, text: "L'examinateur vous ecoute", icon: <Headphones className="w-4 h-4" /> }
+        return { color: "bg-blue-500", pulse: true, text: "L'examinateur vous écoute", icon: <Headphones className="w-4 h-4" /> }
     }
   }
 
   const stateInfo = agentStateInfo()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-sky-50/50 to-blue-50 flex flex-col">
       {/* Hidden audio element for agent */}
       <audio ref={avatarAudioRef} autoPlay playsInline className="hidden" />
 
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-sm border-b border-sky-200 px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          {/* Avatar info */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm">
+      {/* Header : avatar | phase (un seul indicateur) | timer */}
+      <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          {/* Avatar + statut */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md shrink-0">
               {selectedAvatar ? AVATAR_EMOJIS[selectedAvatar.id] || "E" : "E"}
             </div>
-            <div>
-              <p className="font-medium text-slate-800 text-sm">{selectedAvatar?.name || "Examinateur"}</p>
-              <p className="text-xs text-slate-500">
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-800 truncate">{selectedAvatar?.name || "Examinateur"}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1.5">
                 {livekitConnected ? (
-                  <span className="text-green-600 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                    Connecte
-                  </span>
+                  <>
+                    <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0" />
+                    <span className="text-emerald-600 font-medium">Connecté</span>
+                  </>
                 ) : (
-                  "Connexion..."
+                  <>
+                    <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse shrink-0" />
+                    Connexion…
+                  </>
                 )}
               </p>
             </div>
           </div>
 
-          {/* Phase Badge */}
+          {/* Phase : un seul badge au centre */}
           <Badge
             variant="outline"
-            className={cn("text-sm font-semibold px-3 py-1", PHASE_COLORS[phase] || PHASE_COLORS.consignes)}
+            className={cn(
+              "shrink-0 text-xs font-bold uppercase tracking-wide px-3 py-1.5",
+              PHASE_COLORS[phase] || PHASE_COLORS.consignes
+            )}
           >
-            {PHASE_LABELS[phase] || phase.toUpperCase()}
+            {PHASE_LABELS[phase] || phase}
           </Badge>
 
-          {/* Circular Timer */}
-          <div className="flex items-center gap-2">
-            <svg width="90" height="90" viewBox="0 0 100 100" className="-rotate-90">
+          {/* Timer circulaire : texte centré correctement */}
+          <div className="relative flex items-center justify-center w-[72px] h-[72px] shrink-0">
+            <svg width="72" height="72" viewBox="0 0 100 100" className="-rotate-90 absolute inset-0">
               <circle cx="50" cy="50" r={radius} fill="none" stroke="#E5E7EB" strokeWidth="6" />
               {(phase === "monologue" || phase === "debat") && (
                 <circle
@@ -457,45 +477,46 @@ export default function Exam() {
                 />
               )}
             </svg>
-            <div className="absolute w-[90px] flex items-center justify-center">
-              <span className={cn(
-                "font-mono text-sm font-bold",
-                isOvertime && "text-red-600",
-                isWarning && "text-amber-600",
-                phase === "consignes" && "text-blue-500 text-xs",
-              )}>
-                {phase === "consignes" ? "Consignes" :
-                  phase === "feedback" ? "Feedback" :
-                  `${formatTime(Math.max(0, timeRemaining))}`}
-              </span>
-            </div>
+            <span className={cn(
+              "relative z-10 font-mono text-xs font-bold tabular-nums",
+              isOvertime && "text-red-600",
+              isWarning && "text-amber-600",
+              phase === "consignes" && "text-slate-400",
+              (phase === "monologue" || phase === "debat") && "text-slate-700",
+            )}>
+              {phase === "consignes" ? "—" : phase === "feedback" ? "—" : formatTime(Math.max(0, timeRemaining))}
+            </span>
           </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center p-4 gap-4 max-w-3xl mx-auto w-full">
-        {/* Agent State Indicator */}
-        <Card className="w-full bg-white/90 border border-slate-200 shadow-sm">
+      <main className="flex-1 flex flex-col items-center p-4 sm:p-6 gap-4 max-w-3xl mx-auto w-full">
+        {/* Indicateur d'état (examinateur parle / écoute / réfléchit) */}
+        <Card className={cn(
+          "w-full shadow-md border-2 transition-colors",
+          agentState === "speaking" && "bg-emerald-50/90 border-emerald-200",
+          agentState === "listening" && "bg-sky-50/90 border-sky-200",
+          agentState === "thinking" && "bg-amber-50/90 border-amber-200",
+          agentState === "connecting" && "bg-slate-50/90 border-slate-200",
+        )}>
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className={cn(
-                "w-3 h-3 rounded-full",
+                "w-3 h-3 rounded-full shrink-0",
                 stateInfo.color,
                 stateInfo.pulse && "animate-pulse"
               )} />
               {stateInfo.icon}
-              <span className="text-sm font-medium text-slate-700">{stateInfo.text}</span>
-
-              {/* Mic level indicator */}
+              <span className="text-sm font-semibold text-slate-800">{stateInfo.text}</span>
               {microphoneEnabled && localAudioTrack && (
-                <div className="ml-auto flex items-center gap-1.5">
-                  <Mic className="w-4 h-4 text-green-600" />
+                <div className="ml-auto flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div className="flex items-end gap-0.5 h-4">
                     {[1, 2, 3, 4, 5].map(i => (
                       <div
                         key={i}
-                        className="w-1 bg-green-400 rounded-full animate-wave"
+                        className="w-1.5 bg-emerald-400 rounded-full animate-wave"
                         style={{
                           height: `${Math.random() * 60 + 40}%`,
                           animationDelay: `${i * 0.1}s`,
@@ -509,18 +530,18 @@ export default function Exam() {
           </CardContent>
         </Card>
 
-        {/* "Je suis pret" prompt */}
+        {/* Invite "Je suis prêt" */}
         {phase === "consignes" && isListeningForReady && (
-          <Card className="w-full bg-white/90 border-2 border-green-200 shadow-lg">
+          <Card className="w-full bg-white border-2 border-emerald-200 shadow-lg">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <div className="flex items-center gap-2 text-green-700">
-                  <span className="w-3 h-3 bg-green-500 rounded-full mic-active" />
-                  <span className="font-medium text-sm">Dites "Je suis pret" ou cliquez sur le bouton</span>
+                <div className="flex items-center gap-2 text-emerald-700">
+                  <span className="w-3 h-3 bg-emerald-500 rounded-full mic-active" />
+                  <span className="font-medium text-sm">Dites « Je suis prêt » ou cliquez sur le bouton</span>
                 </div>
-                <Button onClick={handleReady} className="bg-green-600 hover:bg-green-700 text-white shadow-md px-6">
+                <Button onClick={handleReady} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md px-6">
                   <CheckCircle className="w-5 h-5 mr-2" />
-                  Je suis pret(e)
+                  Je suis prêt(e)
                 </Button>
               </div>
             </CardContent>
@@ -546,26 +567,36 @@ export default function Exam() {
           </Card>
         )}
 
-        {/* Live transcript */}
-        {liveTranscript.length > 0 && (
-          <Card className="w-full bg-white/90 border border-slate-200 max-h-48 overflow-hidden">
-            <CardContent className="p-3">
-              <p className="text-xs font-medium text-slate-500 mb-2">Transcription en direct</p>
-              <div className="space-y-1.5 max-h-32 overflow-y-auto text-sm">
-                {liveTranscript.slice(-6).map((entry, i) => (
-                  <div key={i} className={cn(
-                    "text-xs px-2 py-1 rounded",
-                    entry.role === "user" ? "bg-sky-50 text-sky-800 ml-4" : "bg-slate-50 text-slate-700 mr-4"
-                  )}>
-                    <span className="font-medium">{entry.role === "user" ? "Vous" : "Examinateur"}: </span>
-                    {entry.text}
-                  </div>
-                ))}
-                <div ref={transcriptEndRef} />
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Transcription : toujours visible, placeholder si vide */}
+        <Card className="w-full flex-1 min-h-[140px] flex flex-col bg-white/95 border border-slate-200 shadow-sm overflow-hidden">
+          <CardContent className="p-4 flex flex-col flex-1 min-h-0">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Transcription</p>
+            <div className="space-y-2 flex-1 min-h-0 overflow-y-auto text-sm">
+              {liveTranscript.length > 0 ? (
+                <>
+                  {liveTranscript.slice(-12).map((entry, i) => (
+                    <div key={i} className={cn(
+                      "text-sm px-3 py-2 rounded-lg",
+                      entry.role === "user"
+                        ? "bg-sky-100 text-sky-900 ml-2 border-l-2 border-sky-400"
+                        : "bg-slate-100 text-slate-800 mr-2 border-l-2 border-slate-400"
+                    )}>
+                      <span className="font-semibold text-slate-600">{entry.role === "user" ? "Vous" : "Examinateur"}</span>
+                      <span className="ml-1.5">{entry.text}</span>
+                    </div>
+                  ))}
+                  <div ref={transcriptEndRef} />
+                </>
+              ) : (
+                <p className="text-slate-400 text-sm italic py-4">
+                  {phase === "consignes"
+                    ? "Écoutez les consignes. La transcription s'affichera ici pendant l'échange."
+                    : "La conversation apparaîtra ici."}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Connection status overlay */}
         {!livekitConnected && (
@@ -579,48 +610,64 @@ export default function Exam() {
         )}
       </main>
 
-      {/* Bottom controls */}
-      <footer className="bg-white/90 backdrop-blur-sm border-t border-sky-200 px-4 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-center gap-3">
-          {/* Mic toggle */}
-          <Button
-            size="lg"
-            onClick={toggleMicrophone}
-            className={cn(
-              "rounded-full w-14 h-14 shadow-md",
-              microphoneEnabled
-                ? "bg-slate-100 border-2 border-slate-300 hover:bg-slate-200 text-slate-700"
-                : "bg-red-500 hover:bg-red-600 text-white border-0"
-            )}
-          >
-            {microphoneEnabled ? <Mic className="w-5 h-5 text-slate-700" /> : <MicOff className="w-5 h-5 text-white" />}
-          </Button>
+      {/* Barre d'actions : micro, actions de phase, terminer */}
+      <footer className="bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-2px_10px_rgba(0,0,0,0.04)] px-4 py-5">
+        <div className="max-w-3xl mx-auto flex flex-wrap items-center justify-center gap-4">
+          {/* Micro avec libellé */}
+          <div className="flex flex-col items-center gap-1.5">
+            <Button
+              size="lg"
+              onClick={toggleMicrophone}
+              aria-label={microphoneEnabled ? "Couper le micro" : "Réactiver le micro"}
+              className={cn(
+                "rounded-full w-16 h-16 shadow-lg transition-all",
+                microphoneEnabled
+                  ? "bg-slate-100 border-2 border-slate-300 hover:bg-slate-200 text-slate-700"
+                  : "bg-red-500 hover:bg-red-600 text-white border-0"
+              )}
+            >
+              {microphoneEnabled ? (
+                <span className="text-3xl leading-none" aria-hidden>🎤</span>
+              ) : (
+                <span className="text-3xl leading-none" aria-hidden>🔇</span>
+              )}
+            </Button>
+            <span className="text-xs font-medium text-slate-500">Micro</span>
+          </div>
 
-          {/* Je suis pret button (consignes phase) */}
+          {phase === "consignes" && !isListeningForReady && livekitConnected && (
+            <Button
+              size="lg"
+              onClick={handleSkipConsignes}
+              className="rounded-full px-6 bg-slate-500 hover:bg-slate-600 text-white shadow-md"
+            >
+              <SkipForward className="w-5 h-5 mr-2" />
+              Passer les consignes
+            </Button>
+          )}
+
           {phase === "consignes" && isListeningForReady && (
             <Button
               size="lg"
               onClick={handleReady}
-              className="rounded-full px-6 bg-green-600 hover:bg-green-700 text-white shadow-md"
+              className="rounded-full px-6 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
             >
               <CheckCircle className="w-5 h-5 mr-2" />
-              Je suis pret(e)
+              Je suis prêt(e)
             </Button>
           )}
 
-          {/* J'ai termine button (monologue phase) */}
-          {phase === "monologue" && (
+          {(phase === "monologue" || phase === "debat") && (
             <Button
               size="lg"
               onClick={handleFinished}
               className="rounded-full px-6 bg-amber-500 hover:bg-amber-600 text-white shadow-md"
             >
               <Flag className="w-5 h-5 mr-2" />
-              J'ai termine
+              J'ai terminé
             </Button>
           )}
 
-          {/* End exam button */}
           {phase !== "consignes" && (
             <Button
               variant="destructive"
@@ -634,7 +681,7 @@ export default function Exam() {
               ) : (
                 <>
                   <Phone className="w-5 h-5 mr-2" />
-                  Terminer
+                  Terminer l'examen
                 </>
               )}
             </Button>

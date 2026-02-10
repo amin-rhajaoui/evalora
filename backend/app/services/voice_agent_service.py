@@ -9,7 +9,14 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import logger
-from ..db.models import TranscriptionEntry as TranscriptionEntryModel
+from ..db.models import TranscriptionEntry as TranscriptionEntryModel, DebateQA as DebateQAModel
+
+
+class DebateQAEntry(BaseModel):
+    """Une paire question/réponse du débat"""
+    question_number: int
+    question_text: str
+    answer_text: Optional[str] = None
 
 
 class TranscriptEntry(BaseModel):
@@ -131,6 +138,48 @@ class VoiceAgentService:
             select(TranscriptionEntryModel.session_id).distinct()
         )
         return [r[0] for r in result.all()]
+
+    @staticmethod
+    async def save_debate_qa(
+        db: AsyncSession,
+        session_id: str,
+        question_number: int,
+        question_text: str,
+        answer_text: Optional[str] = None,
+    ) -> DebateQAEntry:
+        """Sauvegarde une paire question/réponse du débat."""
+        row = DebateQAModel(
+            session_id=session_id,
+            question_number=question_number,
+            question_text=question_text,
+            answer_text=answer_text,
+        )
+        db.add(row)
+        await db.commit()
+        logger.info(f"DebateQA saved: session={session_id} Q{question_number}")
+        return DebateQAEntry(
+            question_number=question_number,
+            question_text=question_text,
+            answer_text=answer_text,
+        )
+
+    @staticmethod
+    async def get_debate_qa(db: AsyncSession, session_id: str) -> List[DebateQAEntry]:
+        """Récupère toutes les paires Q&A d'une session, ordonnées par question_number."""
+        result = await db.execute(
+            select(DebateQAModel)
+            .where(DebateQAModel.session_id == session_id)
+            .order_by(DebateQAModel.question_number)
+        )
+        rows = result.scalars().all()
+        return [
+            DebateQAEntry(
+                question_number=r.question_number,
+                question_text=r.question_text,
+                answer_text=r.answer_text,
+            )
+            for r in rows
+        ]
 
 
 voice_agent_service = VoiceAgentService()

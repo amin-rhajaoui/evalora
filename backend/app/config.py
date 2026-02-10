@@ -121,7 +121,7 @@ AVATARS = {
         "behavior": "Sourit souvent, parle calmement, valorise les efforts, reformule pour aider.",
         "feedback_tone": "Chaleureux, empathique et motivant.",
         "placeholder_image": "/assets/avatars/clea.png",
-        "elevenlabs_voice_id": "8qnuneLiGjGrT4A62CCe",
+        "elevenlabs_voice_id": "WQKwBV2Uzw1gSGr69N8I",
         "elevenlabs_stability": 0.5,
         "elevenlabs_similarity_boost": 0.75,
         "elevenlabs_style_exaggeration": None,
@@ -138,7 +138,7 @@ AVATARS = {
         "behavior": "Langage familier mais correct. Attitude très amicale.",
         "feedback_tone": "Positif et encourageant.",
         "placeholder_image": "/assets/avatars/alex.png",
-        "elevenlabs_voice_id": "IKne3meq5aSn9XLyUdCD",  # voix "Antoine" (jeune homme français)
+        "elevenlabs_voice_id": "IbbR6Av0dWuQJS0b8JVT",  # voix Alex
         "elevenlabs_stability": 0.5,
         "elevenlabs_similarity_boost": 0.75,
         "elevenlabs_style_exaggeration": None,
@@ -155,7 +155,8 @@ AVATARS = {
         "behavior": "Structure les consignes clairement, parle lentement, garde une distance bienveillante.",
         "feedback_tone": "Neutre et analytique.",
         "placeholder_image": "/assets/avatars/karim.png",
-        "elevenlabs_voice_id": "zcAOhNBS3c14rBihAFp1",  # voix "Guillaume" (homme mature français)
+        # Nouveau voice Karim (à activer quand validé sur ton compte ElevenLabs) : imDSDag6GbkW8mdzqJ0D
+        "elevenlabs_voice_id": "5Qfm4RqcAer0xoyWtoHC",  # Karim (Guillaume – fallback tant que le nouveau ID n’est pas OK)
         "elevenlabs_stability": 0.6,
         "elevenlabs_similarity_boost": 0.75,
         "elevenlabs_style_exaggeration": None,
@@ -172,7 +173,7 @@ AVATARS = {
         "behavior": "Peu de sourires, ton direct, reformule si nécessaire, exige des réponses complètes.",
         "feedback_tone": "Exigeant mais constructif.",
         "placeholder_image": "/assets/avatars/claire.png",
-        "elevenlabs_voice_id": "XB0fDUnXU5powFXDhCwa",  # voix "Charlotte" (femme autoritaire française)
+        "elevenlabs_voice_id": "QbsdzCokdlo98elkq4Pc",  # voix Claire
         "elevenlabs_stability": 0.6,
         "elevenlabs_similarity_boost": 0.75,
         "elevenlabs_style_exaggeration": None,

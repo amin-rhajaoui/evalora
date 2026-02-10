@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 from ..db.database import get_db
-from ..services.voice_agent_service import voice_agent_service, TranscriptEntry, Transcription
+from ..services.voice_agent_service import voice_agent_service, TranscriptEntry, Transcription, DebateQAEntry
 from ..config import logger, settings
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -124,6 +124,54 @@ async def get_transcription(session_id: str, db: AsyncSession = Depends(get_db))
         transcript=transcription.transcript,
         created_at=transcription.created_at
     )
+
+
+class DebateQARequest(BaseModel):
+    """Requête pour sauvegarder une paire question/réponse du débat"""
+    session_id: str
+    question_number: int
+    question_text: str
+    answer_text: Optional[str] = None
+
+
+@router.post("/debate-qa", response_model=StatusResponse)
+async def save_debate_qa(request: DebateQARequest, db: AsyncSession = Depends(get_db)):
+    """
+    Sauvegarde une paire question/réponse du débat (appelé par l'agent).
+    """
+    try:
+        await voice_agent_service.save_debate_qa(
+            db,
+            session_id=request.session_id,
+            question_number=request.question_number,
+            question_text=request.question_text,
+            answer_text=request.answer_text,
+        )
+        return StatusResponse(
+            status="success",
+            message=f"Debate QA #{request.question_number} saved"
+        )
+    except Exception as e:
+        logger.error(f"Error saving debate QA: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error saving debate QA: {str(e)}"
+        )
+
+
+@router.get("/debate-qa/{session_id}", response_model=List[DebateQAEntry])
+async def get_debate_qa(session_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Récupère toutes les paires Q&A d'une session de débat.
+    """
+    try:
+        return await voice_agent_service.get_debate_qa(db, session_id)
+    except Exception as e:
+        logger.error(f"Error fetching debate QA: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching debate QA: {str(e)}"
+        )
 
 
 @router.delete("/transcription/{session_id}", response_model=StatusResponse)

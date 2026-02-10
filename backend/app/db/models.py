@@ -70,6 +70,21 @@ class User(Base):
         return f"<User {self.email}>"
 
 
+class DebateQA(Base):
+    """Paire question/réponse du débat"""
+    __tablename__ = "debate_qa"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(String(64), nullable=False, index=True)
+    question_number = Column(Integer, nullable=False)
+    question_text = Column(Text, nullable=False)
+    answer_text = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<DebateQA {self.session_id} Q{self.question_number}>"
+
+
 class TranscriptionEntry(Base):
     """Une entrée de transcription (TTS/STT) d'un appel vocal"""
     __tablename__ = "transcription_entries"
