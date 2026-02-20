@@ -29,10 +29,12 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     # Database - Neon PostgreSQL (using psycopg async driver)
-    DATABASE_URL: str = "postgresql+psycopg://neondb_owner:npg_d9ASaKywX1VE@ep-tiny-art-agr0j92a-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+    # Set via DATABASE_URL in .env
+    DATABASE_URL: str = ""
 
     # JWT Configuration
-    JWT_SECRET_KEY: str = "evalora-secret-key-change-in-production-2024"
+    # Set via JWT_SECRET_KEY in .env
+    JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

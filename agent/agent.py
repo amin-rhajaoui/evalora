@@ -64,6 +64,7 @@ CONSIGNES_AUDIO = {
     "karim": PROJECT_ROOT / "KARIM-Hugo - Warm and Grounded_pvc_sp100_s50_sb75_v3.mp3",
     "claire": PROJECT_ROOT / "Claire-02-10T20_09_02_Koraly \u2013 E-learning Instructor_pvc_sp85_s90_sb100_v3.mp3",
 }
+logger.info(f"[AUDIO] MP3 paths: {[(k, str(p), p.exists()) for k, p in CONSIGNES_AUDIO.items()]}")
 
 
 def normalize_text(text: str) -> str:
@@ -296,23 +297,31 @@ class ConsignesAgent(Agent):
         room_name = ctx["room_name"]
 
         await send_event(room, "phase_started", {"phase": "consignes"})
-        logger.info("Starting Phase 1: Consignes (MP3)")
+        logger.info("[AUDIO] Starting Phase 1: Consignes (MP3)")
 
         # Play the pre-recorded MP3
         mp3_path = CONSIGNES_AUDIO.get(self._avatar_id)
-        if mp3_path and mp3_path.exists():
-            logger.info(f"Playing consignes MP3: {mp3_path.name}")
-            try:
-                await self.session.say(
-                    "",
-                    audio=audio_frames_from_file(str(mp3_path)),
-                    allow_interruptions=False,
-                )
-            except Exception as e:
-                logger.error(f"Error playing consignes MP3: {e}")
+        logger.info(f"[AUDIO] avatar_id={self._avatar_id}, mp3_path={mp3_path}, exists={mp3_path.exists() if mp3_path else 'N/A'}")
+        if mp3_path:
+            if mp3_path.exists():
+                size_kb = mp3_path.stat().st_size / 1024
+                logger.info(f"[AUDIO] Playing MP3: {mp3_path.name} ({size_kb:.1f} KB)")
+                try:
+                    logger.info("[AUDIO] Calling session.say() with MP3 audio frames...")
+                    await self.session.say(
+                        "",
+                        audio=audio_frames_from_file(str(mp3_path)),
+                        allow_interruptions=False,
+                    )
+                    logger.info("[AUDIO] MP3 playback finished successfully")
+                except Exception as e:
+                    logger.error(f"[AUDIO] Error playing consignes MP3: {e}", exc_info=True)
+                    await self._play_tts_fallback(ctx, room_name)
+            else:
+                logger.warning(f"[AUDIO] MP3 file does not exist: {mp3_path}")
                 await self._play_tts_fallback(ctx, room_name)
         else:
-            logger.warning(f"No MP3 found for avatar {self._avatar_id}, using TTS fallback")
+            logger.warning(f"[AUDIO] No MP3 mapping for avatar '{self._avatar_id}', available: {list(CONSIGNES_AUDIO.keys())}")
             await self._play_tts_fallback(ctx, room_name)
 
         # Log consignes text into transcript
@@ -576,7 +585,7 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
-    logger.info(f"Agent joining room: {ctx.room.name}")
+    logger.info(f"[AUDIO] Agent joining room: {ctx.room.name}")
 
     session_id = ctx.room.name.replace("evalora-", "")
     if not session_id:
@@ -593,6 +602,7 @@ async def entrypoint(ctx: JobContext):
     avatar_id = ctx_data["avatar_id"]
     document_id = ctx_data.get("document_id")
     logger.info(f"Session: student={student_name}, avatar={avatar_id}, document={document_id}")
+    logger.info(f"[AUDIO] MP3 mapping for avatar '{avatar_id}': {CONSIGNES_AUDIO.get(avatar_id)}")
 
     # Fetch avatar config
     avatar_config = await fetch_avatar_config(avatar_id) or {}

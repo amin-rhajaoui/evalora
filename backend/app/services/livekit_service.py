@@ -81,7 +81,7 @@ class LiveKitService:
                 room = await lkapi.room.create_room(
                     api.CreateRoomRequest(
                         name=room_name,
-                        empty_timeout=60,  # Fermeture automatique après 60 secondes si vide
+                        empty_timeout=300,  # 5 min pour laisser le temps aux checks + mic test
                         max_participants=2,
                     )
                 )

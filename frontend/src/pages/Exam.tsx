@@ -6,19 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn, formatTime } from "@/lib/utils"
-import { Mic, MicOff, Phone, Loader2, CheckCircle, Flag, Headphones, Volume2, SkipForward } from "lucide-react"
+import { Mic, Phone, Loader2, CheckCircle, Flag, Headphones, Volume2, SkipForward } from "lucide-react"
 import { ExamPhase } from "@/types"
 import {
   Room,
   RoomEvent,
   RemoteParticipant,
-  RemoteTrackPublication,
-  RemoteTrack,
-  Track,
   LocalAudioTrack,
   createLocalAudioTrack,
   DataPacket_Kind,
+  Track,
 } from "livekit-client"
+import { RoomAudioRenderer, StartAudio } from "@livekit/components-react"
 
 const AVATAR_EMOJIS: Record<string, string> = {
   clea: "C",
@@ -79,7 +78,7 @@ export default function Exam() {
   const [liveTranscript, setLiveTranscript] = useState<Array<{ role: string; text: string; phase: string }>>([])
   const transcriptEndRef = useRef<HTMLDivElement>(null)
 
-  const avatarAudioRef = useRef<HTMLAudioElement>(null)
+  const [connectedRoom, setConnectedRoom] = useState<Room | null>(null)
   const roomRef = useRef<Room | null>(null)
 
   // Redirect if no session
@@ -103,114 +102,150 @@ export default function Exam() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [livekitRoomName])
 
-  // LiveKit connection
+  // LiveKit connection — setTimeout(0) defers past React StrictMode's
+  // synchronous mount→cleanup→mount cycle so the first mount never opens a WebSocket.
   useEffect(() => {
     if (!livekitToken || !livekitRoomName || !livekitWsUrl) return
 
-    const connectToLiveKit = async () => {
-      try {
-        const room = new Room()
-        roomRef.current = room
+    let isCancelled = false
+    let room: Room | null = null
 
-        // Handle incoming audio from agent
-        room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
-          if (participant.identity === room.localParticipant?.identity) return
-          if (track.kind === Track.Kind.Audio && avatarAudioRef.current) {
-            track.attach(avatarAudioRef.current)
+    const timeoutId = setTimeout(async () => {
+      room = new Room()
+
+      // [AUDIO] Log track subscriptions (agent audio)
+      room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        if (isCancelled) return
+        if (track.kind === Track.Kind.Audio) {
+          console.log("[AUDIO] TrackSubscribed: received audio track from", participant.identity, "source:", publication.source)
+        }
+      })
+      room.on(RoomEvent.TrackPublished, (_pub, participant) => {
+        if (isCancelled) return
+        console.log("[AUDIO] TrackPublished by", participant.identity)
+      })
+      room.on(RoomEvent.ParticipantConnected, (participant) => {
+        if (isCancelled) return
+        console.log("[AUDIO] ParticipantConnected:", participant.identity)
+      })
+
+      // Handle DataChannel events from agent
+      room.on(RoomEvent.DataReceived, (payload: Uint8Array, _participant?: RemoteParticipant, _kind?: DataPacket_Kind, topic?: string) => {
+        if (isCancelled || topic !== "exam") return
+        try {
+          const data = JSON.parse(new TextDecoder().decode(payload))
+          console.log("Agent event:", data)
+          if (data.event === "phase_started" && data.phase === "consignes") {
+            console.log("[AUDIO] Agent sent phase_started=consignes (MP3 should be playing or finished)")
           }
-        })
-
-        room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
-          if (track.kind === Track.Kind.Audio) {
-            track.detach()
+          if (data.event === "listening_for_ready") {
+            console.log("[AUDIO] Agent sent listening_for_ready (MP3 playback done, waiting for 'Je suis prêt')")
           }
-        })
 
-        // Handle DataChannel events from agent
-        room.on(RoomEvent.DataReceived, (payload: Uint8Array, _participant?: RemoteParticipant, _kind?: DataPacket_Kind, topic?: string) => {
-          if (topic !== "exam") return
-          try {
-            const data = JSON.parse(new TextDecoder().decode(payload))
-            console.log("Agent event:", data)
-
-            switch (data.event) {
-              case "phase_started":
-                if (data.phase) setPhase(data.phase as ExamPhase)
-                break
-              case "listening_for_ready":
-                setIsListeningForReady(data.active === true)
-                setAgentState("listening")
-                break
-              case "ready_detected":
-                setIsListeningForReady(false)
-                break
-              case "transition_to_monologue":
-                setPhase("monologue")
-                setIsListeningForReady(false)
-                setAgentState("listening")
-                break
-              case "transition_to_debat":
-                setPhase("debat")
-                setAgentState("listening")
-                break
-              case "exam_complete":
-                handleEndConversation()
-                break
-              case "transcript":
-                if (data.role && data.text) {
-                  setLiveTranscript(prev => [...prev, { role: data.role, text: data.text, phase: data.phase || phase }])
-                }
-                break
-            }
-          } catch (e) {
-            console.error("Error parsing agent event:", e)
+          switch (data.event) {
+            case "phase_started":
+              if (data.phase) setPhase(data.phase as ExamPhase)
+              break
+            case "listening_for_ready":
+              setIsListeningForReady(data.active === true)
+              setAgentState("listening")
+              break
+            case "ready_detected":
+              setIsListeningForReady(false)
+              break
+            case "transition_to_monologue":
+              setPhase("monologue")
+              setIsListeningForReady(false)
+              setAgentState("listening")
+              break
+            case "transition_to_debat":
+              setPhase("debat")
+              setAgentState("listening")
+              break
+            case "exam_complete":
+              handleEndConversation()
+              break
+            case "transcript":
+              if (data.role && data.text) {
+                setLiveTranscript(prev => [...prev, { role: data.role, text: data.text, phase: data.phase || phase }])
+              }
+              break
           }
-        })
+        } catch (e) {
+          console.error("Error parsing agent event:", e)
+        }
+      })
 
-        // Track agent state from participant metadata/speaking
-        room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-          const agentSpeaking = speakers.some(s => s.identity !== room.localParticipant?.identity)
-          if (agentSpeaking) {
-            setAgentState("speaking")
-          } else {
-            setAgentState("listening")
-          }
-        })
+      // Track agent state from participant metadata/speaking
+      room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        if (isCancelled) return
+        const agentSpeaking = speakers.some(s => s.identity !== room!.localParticipant?.identity)
+        setAgentState(agentSpeaking ? "speaking" : "listening")
+      })
 
-        room.on(RoomEvent.Connected, async () => {
-          setLivekitConnected(true)
-          setAgentState("listening")
-
-          // Publish audio only (no video)
-          try {
-            const audioTrack = await createLocalAudioTrack()
-            setLocalAudioTrack(audioTrack)
-            await room.localParticipant?.publishTrack(audioTrack)
-          } catch (error) {
-            console.error("Error publishing audio:", error)
-          }
-        })
-
-        room.on(RoomEvent.Disconnected, () => {
-          setLivekitConnected(false)
-          setAgentState("connecting")
-        })
-
-        await room.connect(livekitWsUrl, livekitToken)
-      } catch (error) {
-        console.error("LiveKit connection error:", error)
+      room.on(RoomEvent.Disconnected, () => {
+        if (isCancelled) return
         setLivekitConnected(false)
-      }
-    }
+        setAgentState("connecting")
+      })
 
-    connectToLiveKit()
+      try {
+        await room.connect(livekitWsUrl, livekitToken)
+
+        if (isCancelled) {
+          room.disconnect()
+          return
+        }
+
+        // Connection succeeded — expose room to the rest of the component
+        roomRef.current = room
+        setConnectedRoom(room)
+        setLivekitConnected(true)
+        setAgentState("listening")
+
+        // [AUDIO] Log participants and remote audio tracks after connect
+        const remoteParticipants = room.remoteParticipants
+        console.log("[AUDIO] Connected. Remote participants:", Array.from(remoteParticipants.keys()))
+        for (const [id, p] of remoteParticipants) {
+          const publications = Array.from(p.trackPublications.values())
+          const audioPubs = publications.filter(pub => pub.kind === Track.Kind.Audio)
+          console.log(`[AUDIO] Participant ${id}: ${publications.length} tracks, ${audioPubs.length} audio`)
+        }
+
+        // Publish local microphone
+        try {
+          const audioTrack = await createLocalAudioTrack()
+          if (isCancelled) { audioTrack.stop(); return }
+          setLocalAudioTrack(audioTrack)
+          await room.localParticipant?.publishTrack(audioTrack)
+        } catch (error) {
+          console.error("Error publishing audio:", error)
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error("LiveKit connection error:", error)
+          setLivekitConnected(false)
+        }
+      }
+    }, 0)
 
     return () => {
-      localAudioTrack?.stop()
-      roomRef.current?.disconnect()
-      roomRef.current = null
+      isCancelled = true
+      setConnectedRoom(null)
+      clearTimeout(timeoutId)
+      if (room) {
+        room.disconnect()
+      }
+      if (roomRef.current === room) {
+        roomRef.current = null
+      }
     }
   }, [livekitToken, livekitRoomName, livekitWsUrl])
+
+  // Cleanup local audio track on unmount
+  useEffect(() => {
+    return () => { localAudioTrack?.stop() }
+  }, [localAudioTrack])
 
   // Monologue timer
   useEffect(() => {
@@ -410,8 +445,19 @@ export default function Exam() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-sky-50/50 to-blue-50 flex flex-col">
-      {/* Hidden audio element for agent */}
-      <audio ref={avatarAudioRef} autoPlay playsInline className="hidden" />
+      {/* Lecture audio de l'agent via LiveKit (gère autoplay + pistes distantes) */}
+      {connectedRoom && (
+        <>
+          <RoomAudioRenderer room={connectedRoom} volume={1} />
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+            <StartAudio
+              room={connectedRoom}
+              label="Cliquez pour activer le son"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-lg"
+            />
+          </div>
+        </>
+      )}
 
       {/* Header : avatar | phase (un seul indicateur) | timer */}
       <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm px-4 py-3">
