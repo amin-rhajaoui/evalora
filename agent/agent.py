@@ -3,12 +3,22 @@ Evalora Voice Agent - Multi-agent architecture for FLE exam simulation
 
 ConsignesAgent → MonologueAgent → DebatAgent → FeedbackAgent
 
-Requires Python >= 3.10, < 3.14
+Requires Python >= 3.10, < 3.14 (3.14 supported with event loop workaround)
 """
+import asyncio
+import sys
+
+# Python 3.14+: asyncio.get_event_loop() no longer auto-creates a loop.
+# LiveKit agents CLI requires one - create it before any other imports.
+if sys.version_info >= (3, 14):
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
 import os
 import json
 import logging
-import asyncio
 import unicodedata
 import httpx
 from pathlib import Path
@@ -274,7 +284,8 @@ async def send_event(room: rtc.Room, event_type: str, data: dict = None):
 # ========== Agent Classes ==========
 
 class ConsignesAgent(Agent):
-    """Phase 1: Plays pre-recorded MP3 consignes (or TTS fallback), then waits for 'Je suis prêt'."""
+    """Phase 1: Plays pre-recorded MP3 consignes (or TTS fallback), then waits for 'Je suis prêt'.
+    When Tavus is active, skips MP3 playback (Tavus avatar handles lip-sync via custom_greeting)."""
 
     def __init__(self, sequences: list[dict], is_tu: bool, avatar_id: str):
         super().__init__(
@@ -297,17 +308,20 @@ class ConsignesAgent(Agent):
         room_name = ctx["room_name"]
 
         await send_event(room, "phase_started", {"phase": "consignes"})
-        logger.info("[AUDIO] Starting Phase 1: Consignes (MP3)")
 
-        # Play the pre-recorded MP3
-        mp3_path = CONSIGNES_AUDIO.get(self._avatar_id)
-        logger.info(f"[AUDIO] avatar_id={self._avatar_id}, mp3_path={mp3_path}, exists={mp3_path.exists() if mp3_path else 'N/A'}")
-        if mp3_path:
-            if mp3_path.exists():
+        # Wait for Tavus to be ready (up to 15s), or fall back to MP3
+        tavus_active = await self._wait_for_tavus(ctx, timeout=15.0)
+
+        if tavus_active:
+            logger.info("[AUDIO] Tavus active — avatar handles consignes lip-sync, skipping MP3")
+        else:
+            logger.info("[AUDIO] No Tavus — playing consignes via MP3")
+            mp3_path = CONSIGNES_AUDIO.get(self._avatar_id)
+            logger.info(f"[AUDIO] avatar_id={self._avatar_id}, mp3_path={mp3_path}, exists={mp3_path.exists() if mp3_path else 'N/A'}")
+            if mp3_path and mp3_path.exists():
                 size_kb = mp3_path.stat().st_size / 1024
                 logger.info(f"[AUDIO] Playing MP3: {mp3_path.name} ({size_kb:.1f} KB)")
                 try:
-                    logger.info("[AUDIO] Calling session.say() with MP3 audio frames...")
                     await self.session.say(
                         "",
                         audio=audio_frames_from_file(str(mp3_path)),
@@ -318,11 +332,8 @@ class ConsignesAgent(Agent):
                     logger.error(f"[AUDIO] Error playing consignes MP3: {e}", exc_info=True)
                     await self._play_tts_fallback(ctx, room_name)
             else:
-                logger.warning(f"[AUDIO] MP3 file does not exist: {mp3_path}")
+                logger.warning(f"[AUDIO] MP3 not available for '{self._avatar_id}', using TTS fallback")
                 await self._play_tts_fallback(ctx, room_name)
-        else:
-            logger.warning(f"[AUDIO] No MP3 mapping for avatar '{self._avatar_id}', available: {list(CONSIGNES_AUDIO.keys())}")
-            await self._play_tts_fallback(ctx, room_name)
 
         # Log consignes text into transcript
         for seq in self._sequences:
@@ -338,6 +349,17 @@ class ConsignesAgent(Agent):
 
         logger.info("Consignes complete. Listening for 'Je suis prêt'...")
         await send_event(room, "listening_for_ready", {"active": True})
+
+    async def _wait_for_tavus(self, ctx: dict, timeout: float) -> bool:
+        """Wait for the frontend to signal that Tavus avatar is visible."""
+        if ctx.get("tavus_active"):
+            return True
+        tavus_event = ctx.setdefault("_tavus_ready_event", asyncio.Event())
+        try:
+            await asyncio.wait_for(tavus_event.wait(), timeout=timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
 
     async def _play_tts_fallback(self, ctx, room_name):
         """Fallback: read sequences via TTS if MP3 is not available."""
@@ -667,7 +689,7 @@ async def entrypoint(ctx: JobContext):
     # Create session
     session = AgentSession(
         stt=stt,
-        llm=openai.LLM(model="gpt-4o-mini"),
+        llm=openai.LLM(model="gpt-4o"),
         tts=tts,
         vad=ctx.proc.userdata["vad"],
         min_endpointing_delay=1.5,
@@ -811,7 +833,14 @@ async def entrypoint(ctx: JobContext):
             payload = json.loads(data.data.decode())
             ev = payload.get("event")
 
-            if ev == "skip_consignes" and state["current_phase"] == "consignes":
+            if ev == "tavus_active":
+                state["tavus_active"] = True
+                tavus_event = state.get("_tavus_ready_event")
+                if tavus_event:
+                    tavus_event.set()
+                logger.info("Tavus avatar active — consignes handled by Tavus lip-sync")
+
+            elif ev == "skip_consignes" and state["current_phase"] == "consignes":
                 state["skip_consignes"] = True
                 logger.info("Skip consignes requested by user")
 

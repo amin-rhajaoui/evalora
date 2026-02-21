@@ -22,6 +22,7 @@ class ExamSession(Base):
     monologue_duration = Column(Integer, nullable=True)
     debat_duration = Column(Integer, nullable=True)
     livekit_room_name = Column(String(128), nullable=True)
+    tavus_conversation_id = Column(String(128), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 

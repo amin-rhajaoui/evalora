@@ -78,6 +78,12 @@ export interface Feedback {
   total_duration: string;
 }
 
+export interface TavusSession {
+  conversation_id: string;
+  conversation_url: string;
+  status: string;
+}
+
 // Types pour la transcription de conversation vocale
 export interface TranscriptEntry {
   role: 'user' | 'assistant';

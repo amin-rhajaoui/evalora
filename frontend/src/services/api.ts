@@ -1,5 +1,5 @@
 import axios from "axios"
-import { Session, Avatar, Document, Feedback, TranscriptEntry } from "@/types"
+import { Session, Avatar, Document, Feedback, TranscriptEntry, TavusSession } from "@/types"
 
 const api = axios.create({
   baseURL: "/api",
@@ -211,6 +211,25 @@ export async function getTranscription(sessionId: string): Promise<{
 }> {
   const response = await api.get(`/voice-agent/transcription/${sessionId}`)
   return response.data
+}
+
+// Tavus API
+export async function startTavusConversation(
+  sessionId: string,
+  avatarId: string,
+  studentName: string,
+  documentTitle: string,
+): Promise<TavusSession> {
+  const response = await api.post(`/tavus/${sessionId}/start`, {
+    avatar_id: avatarId,
+    student_name: studentName,
+    document_title: documentTitle,
+  })
+  return response.data
+}
+
+export async function endTavusConversation(sessionId: string): Promise<void> {
+  await api.delete(`/tavus/${sessionId}/end`)
 }
 
 export default api

@@ -3,8 +3,12 @@ Configuration centralisée pour Evalora
 """
 import logging
 import sys
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+# Resolve .env path relative to this file (backend/.env)
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 # Configuration du logging
 logging.basicConfig(
@@ -45,13 +49,16 @@ class Settings(BaseSettings):
     # ElevenLabs Configuration (optional - for custom voices)
     ELEVENLABS_API_KEY: Optional[str] = None
 
+    # Tavus Configuration
+    TAVUS_API_KEY: str = ""
+
     # LiveKit Configuration
     LIVEKIT_API_KEY: Optional[str] = None
     LIVEKIT_API_SECRET: Optional[str] = None
     LIVEKIT_URL: str = "wss://your-livekit-server.livekit.cloud"
 
     class Config:
-        env_file = ".env"
+        env_file = str(_ENV_FILE)
         extra = "allow"
 
     def log_config_status(self):
@@ -228,12 +235,12 @@ GRADING_CRITERIA = {
     "debat": {
         "interaction": {"max": 2.5, "description": "Réactivité, reformulation"},
         "argumentation": {"max": 1.5, "description": "Défense d'idées, nuance"},
-        "elargissement": {"max": 0.5, "description": "Capacité à ouvrir le débat"}
+        "elargissement": {"max": 0.5, "description": "Capacité à ouvrir le débat"},
+        "comprehension": {"max": 1.0, "description": "Compréhension des questions"}
     },
     "general": {
         "vocabulaire": {"max": 2.0, "description": "Richesse lexicale"},
         "prononciation": {"max": 2.0, "description": "Clarté de prononciation"},
-        "grammaire": {"max": 2.0, "description": "Correction grammaticale"},
-        "comprehension": {"max": 1.0, "description": "Compréhension des questions"}
+        "grammaire": {"max": 2.0, "description": "Correction grammaticale"}
     }
 }

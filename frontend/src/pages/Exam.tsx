@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { useExam } from "@/contexts/ExamContext"
-import { deleteLivekitRoom, getTranscription, submitEvaluation, getFeedback } from "@/services/api"
+import { deleteLivekitRoom, getTranscription, submitEvaluation, getFeedback, startTavusConversation, endTavusConversation } from "@/services/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn, formatTime } from "@/lib/utils"
 import { Mic, Phone, Loader2, CheckCircle, Flag, Headphones, Volume2, SkipForward } from "lucide-react"
 import { ExamPhase } from "@/types"
+import TavusPlayer from "@/components/TavusPlayer"
 import {
   Room,
   RoomEvent,
@@ -73,6 +74,10 @@ export default function Exam() {
   const [livekitConnected, setLivekitConnected] = useState(false)
   const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | null>(null)
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true)
+
+  // Tavus
+  const [tavusUrl, setTavusUrl] = useState<string | null>(null)
+  const [tavusConversationId, setTavusConversationId] = useState<string | null>(null)
 
   // Transcript
   const [liveTranscript, setLiveTranscript] = useState<Array<{ role: string; text: string; phase: string }>>([])
@@ -247,6 +252,38 @@ export default function Exam() {
     return () => { localAudioTrack?.stop() }
   }, [localAudioTrack])
 
+  // Start Tavus conversation when LiveKit connects
+  useEffect(() => {
+    if (!livekitConnected || !session || !selectedAvatar) return
+    if (tavusConversationId) return // already started
+
+    startTavusConversation(
+      session.id,
+      selectedAvatar.id,
+      session.student_name,
+      selectedDocument?.title || "",
+    )
+      .then((tavus) => {
+        setTavusConversationId(tavus.conversation_id)
+        // Append participant name to skip Tavus/Daily lobby
+        const url = new URL(tavus.conversation_url)
+        url.searchParams.set("userName", session.student_name)
+        setTavusUrl(url.toString())
+
+        // Tell the agent that Tavus is handling consignes (skip MP3)
+        if (roomRef.current) {
+          const payload = JSON.stringify({ event: "tavus_active" })
+          roomRef.current.localParticipant?.publishData(
+            new TextEncoder().encode(payload),
+            { topic: "exam" }
+          )
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to start Tavus conversation:", err)
+      })
+  }, [livekitConnected, session, selectedAvatar, selectedDocument, tavusConversationId])
+
   // Monologue timer
   useEffect(() => {
     if (livekitConnected && phase === "monologue" && !isEnding) {
@@ -293,6 +330,13 @@ export default function Exam() {
     if (isEnding) return
     setIsEnding(true)
 
+    // End Tavus conversation
+    if (tavusConversationId && session) {
+      try { await endTavusConversation(session.id) } catch { /* ignore */ }
+      setTavusUrl(null)
+      setTavusConversationId(null)
+    }
+
     // Disconnect LiveKit
     if (roomRef.current) {
       roomRef.current.disconnect()
@@ -328,7 +372,7 @@ export default function Exam() {
     } catch { /* no feedback available */ }
 
     navigate("/results")
-  }, [session, selectedAvatar, livekitRoomName, setFeedback, setConversationTranscript, navigate, isEnding, monologueTime, debatTime])
+  }, [session, selectedAvatar, livekitRoomName, setFeedback, setConversationTranscript, navigate, isEnding, monologueTime, debatTime, tavusConversationId])
 
   // Send "Je suis prêt" via DataChannel
   const handleReady = useCallback(async () => {
@@ -593,6 +637,9 @@ export default function Exam() {
             </CardContent>
           </Card>
         )}
+
+        {/* Tavus avatar video */}
+        <TavusPlayer conversationUrl={tavusUrl} isVisible={livekitConnected} />
 
         {/* Document preview - during monologue */}
         {(phase === "monologue" || phase === "debat") && selectedDocument && (

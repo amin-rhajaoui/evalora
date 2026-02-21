@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings, logger
-from .routers import session, documents, avatar, livekit, evaluation, auth, voice_agent
+from .routers import session, documents, avatar, livekit, evaluation, auth, voice_agent, tavus
 from .db.database import engine
 from .db.models import Base
 
@@ -61,6 +61,7 @@ app.include_router(avatar.router, prefix="/api/avatar", tags=["Avatar"])
 app.include_router(livekit.router, prefix="/api/livekit", tags=["LiveKit"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["Evaluation"])
 app.include_router(voice_agent.router, prefix="/api/voice-agent", tags=["Voice Agent"])
+app.include_router(tavus.router, prefix="/api/tavus", tags=["Tavus"])
 
 
 @app.get("/")
